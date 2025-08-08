@@ -2,7 +2,8 @@
   "name": "project3-monorepo",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd backend && npm install && npm run build",
+    "install": "cd backend && npm install",
+    "build": "cd backend && npm run build",
     "start": "cd backend && npm start",
     "dev": "cd backend && npm run dev"
   },
