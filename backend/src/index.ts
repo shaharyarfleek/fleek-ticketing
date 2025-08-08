@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { BigQuery } from '@google-cloud/bigquery';
@@ -25,12 +25,12 @@ const datasetId = process.env.VITE_BIGQUERY_DATASET_ID || 'fleek_raw';
 const tableId = process.env.VITE_BIGQUERY_TABLE_ID || 'order_line_status_details';
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'OK', message: 'BigQuery API Server is running' });
 });
 
 // Get all order line IDs
-app.get('/api/orders', async (req, res) => {
+app.get('/api/orders', async (req: Request, res: Response) => {
   try {
     const query = `
       SELECT DISTINCT 
@@ -68,7 +68,7 @@ app.get('/api/orders', async (req, res) => {
 });
 
 // Get specific order details
-app.get('/api/orders/:orderLineId', async (req, res) => {
+app.get('/api/orders/:orderLineId', async (req: Request, res: Response) => {
   try {
     const { orderLineId } = req.params;
     
