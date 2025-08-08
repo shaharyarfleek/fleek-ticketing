@@ -29,6 +29,32 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'OK', message: 'BigQuery API Server is running' });
 });
 
+// Debug endpoint to check BigQuery configuration
+app.get('/debug', (req: Request, res: Response) => {
+  try {
+    res.json({
+      status: 'Debug Info',
+      config: {
+        projectId: process.env.VITE_BIGQUERY_PROJECT_ID || 'NOT SET',
+        datasetId: datasetId,
+        tableId: tableId,
+        hasCredentials: !!process.env.VITE_BIGQUERY_CREDENTIALS,
+        credentialsLength: process.env.VITE_BIGQUERY_CREDENTIALS?.length || 0,
+        keyFilename: process.env.VITE_BIGQUERY_KEY_PATH || 'NOT SET'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'Error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      config: {
+        projectId: process.env.VITE_BIGQUERY_PROJECT_ID || 'NOT SET',
+        hasCredentials: !!process.env.VITE_BIGQUERY_CREDENTIALS
+      }
+    });
+  }
+});
+
 // Get all order line IDs
 app.get('/api/orders', async (req: Request, res: Response) => {
   try {
@@ -62,7 +88,13 @@ app.get('/api/orders', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch orders',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: error instanceof Error ? error.message : 'Unknown error',
+      details: {
+        projectId: process.env.VITE_BIGQUERY_PROJECT_ID,
+        datasetId: datasetId,
+        tableId: tableId,
+        hasCredentials: !!process.env.VITE_BIGQUERY_CREDENTIALS
+      }
     });
   }
 });
