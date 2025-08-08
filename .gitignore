@@ -28,3 +28,4 @@ dist-ssr
 !package-lock.json
 !tsconfig*.json
 !.eslintrc.json
+!vercel.json
