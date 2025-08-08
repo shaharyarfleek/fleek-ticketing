@@ -1,0 +1,81 @@
+const API_BASE_URL = 'https://fleek-ticketing.onrender.com';
+
+export interface Order {
+  orderLineId: string;
+  orderValue: number;
+  currency: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  count?: number;
+  error?: string;
+  message?: string;
+}
+
+class ApiService {
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${API_BASE_URL}${endpoint}`;
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        ...options,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error(`API request failed for ${endpoint}:`, error);
+      throw error;
+    }
+  }
+
+  async getOrders(): Promise<Order[]> {
+    try {
+      const response = await this.request<ApiResponse<Order[]>>('/api/orders');
+      
+      if (response.success && response.data) {
+        return response.data;
+      } else {
+        throw new Error(response.error || 'Failed to fetch orders');
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      throw error;
+    }
+  }
+
+  async getOrder(orderLineId: string): Promise<Order> {
+    try {
+      const response = await this.request<ApiResponse<Order>>(`/api/orders/${orderLineId}`);
+      
+      if (response.success && response.data) {
+        return response.data;
+      } else {
+        throw new Error(response.error || 'Failed to fetch order');
+      }
+    } catch (error) {
+      console.error(`Error fetching order ${orderLineId}:`, error);
+      throw error;
+    }
+  }
+
+  async checkHealth(): Promise<{ status: string; message: string }> {
+    try {
+      return await this.request<{ status: string; message: string }>('/health');
+    } catch (error) {
+      console.error('Health check failed:', error);
+      throw error;
+    }
+  }
+}
+
+export const apiService = new ApiService();

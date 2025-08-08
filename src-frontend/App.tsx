@@ -8,12 +8,11 @@ import { TicketList } from './components/TicketList';
 import { TicketDetail } from './components/TicketDetail';
 import { Analytics } from './components/Analytics';
 import { Settings } from './components/Settings';
-import { BigQueryOrders } from './components/BigQueryOrders';
 import { Ticket, TicketStatus, Comment, User, Attachment, Reply, Reminder } from './types';
 import { departments } from './data/mockData';
 
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'tickets' | 'orders' | 'analytics' | 'settings'>('tickets');
+  const [currentView, setCurrentView] = useState<'tickets' | 'analytics' | 'settings'>('tickets');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -177,10 +176,6 @@ function AppContent() {
   };
 
   const renderContent = () => {
-    if (currentView === 'orders') {
-      return <BigQueryOrders />;
-    }
-
     if (currentView === 'analytics') {
       return <Analytics />;
     }

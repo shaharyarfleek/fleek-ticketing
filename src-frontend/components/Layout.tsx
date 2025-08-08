@@ -31,8 +31,8 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentView: 'tickets' | 'orders' | 'analytics' | 'settings';
-  onViewChange: (view: 'tickets' | 'orders' | 'analytics' | 'settings') => void;
+  currentView: 'tickets' | 'analytics' | 'settings';
+  onViewChange: (view: 'tickets' | 'analytics' | 'settings') => void;
   onTicketSelect?: (ticketId: string) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
@@ -162,7 +162,6 @@ export const Layout: React.FC<LayoutProps> = ({
               }`}>
                 {[
                   { key: 'tickets', label: 'Tickets', icon: TicketIcon },
-                  { key: 'orders', label: 'Orders', icon: Database },
                   { key: 'analytics', label: 'Analytics', icon: BarChart3 },
                   { key: 'settings', label: 'Settings', icon: Settings }
                 ].map(({ key, label, icon: Icon }) => (
