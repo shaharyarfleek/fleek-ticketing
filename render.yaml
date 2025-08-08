@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: project3-backend-new
+    name: project3-backend-final
     env: node
     buildCommand: npm install && npm run build
     startCommand: npm start
