@@ -26,7 +26,11 @@ const tableId = process.env.VITE_BIGQUERY_TABLE_ID || 'order_line_status_details
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK', message: 'BigQuery API Server is running' });
+  res.json({ 
+    status: 'OK', 
+    message: 'BigQuery API Server is running',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Debug endpoint to check BigQuery configuration
