@@ -119,6 +119,15 @@ app.get('/api/orders/count', async (req: Request, res: Response) => {
   }
 });
 
+// Test search endpoint
+app.get('/api/orders/search/test', (req: Request, res: Response) => {
+  res.json({
+    success: true,
+    message: 'Search endpoint is working',
+    query: req.query
+  });
+});
+
 // Search orders by query
 app.get('/api/orders/search', async (req: Request, res: Response) => {
   try {

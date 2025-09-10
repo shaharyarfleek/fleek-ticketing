@@ -57,6 +57,18 @@ export const TicketList: React.FC<TicketListProps> = ({
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Helper function for gradient classes
+  const getGradientClasses = (color: string) => {
+    switch (color) {
+      case 'blue': return 'from-blue-500 to-blue-600';
+      case 'purple': return 'from-purple-500 to-purple-600';
+      case 'red': return 'from-red-500 to-red-600';
+      case 'emerald': return 'from-emerald-500 to-emerald-600';
+      case 'amber': return 'from-amber-500 to-amber-600';
+      default: return 'from-gray-500 to-gray-600';
+    }
+  };
+
   // Quick filter functions
   const applyQuickFilter = (filterType: string) => {
     switch (filterType) {
@@ -362,123 +374,156 @@ export const TicketList: React.FC<TicketListProps> = ({
           </div>
         </div>
 
-        {/* Advanced Controls */}
-        <div className="flex items-center justify-between mb-6 p-4 bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60">
-          <div className="flex items-center space-x-4">
-            {/* Quick Filters */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-slate-600 font-medium">Quick:</span>
-              {[
-                { key: 'assigned_to_me', label: 'Assigned to me', icon: User, color: 'blue' },
-                { key: 'mentions', label: 'Mentions', icon: AtSign, color: 'purple' },
-                { key: 'overdue', label: 'Overdue', icon: AlertTriangle, color: 'red' },
-                { key: 'today', label: 'Today', icon: Calendar, color: 'emerald' },
-                { key: 'unassigned', label: 'Unassigned', icon: User, color: 'amber' }
-              ].map(({ key, label, icon: Icon, color }) => (
-                <button
-                  key={key}
-                  onClick={() => applyQuickFilter(key)}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm transition-all duration-200 hover:scale-105 ${
-                    (key === 'assigned_to_me' && filters.assignee?.includes(currentUser?.id || '')) ||
+        {/* World-Class Controls Panel */}
+        <div className="mb-6 bg-white/90 backdrop-blur-xl rounded-3xl border border-slate-200/50 shadow-xl shadow-slate-200/20">
+          {/* Primary Controls Row */}
+          <div className="flex flex-wrap items-center justify-between gap-4 p-6 border-b border-slate-100/60">
+            {/* Quick Filters Section */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-slate-500" />
+                <span className="text-sm font-semibold text-slate-700">Quick Actions</span>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { key: 'assigned_to_me', label: 'My Tickets', icon: User, color: 'blue' },
+                  { key: 'mentions', label: 'Mentions', icon: AtSign, color: 'purple' },
+                  { key: 'overdue', label: 'Overdue', icon: AlertTriangle, color: 'red' },
+                  { key: 'today', label: 'Today', icon: Calendar, color: 'emerald' },
+                  { key: 'unassigned', label: 'Unassigned', icon: Target, color: 'amber' }
+                ].map(({ key, label, icon: Icon, color }) => {
+                  const isActive = (key === 'assigned_to_me' && filters.assignee?.includes(currentUser?.id || '')) ||
                     (key === 'mentions' && filters.customFields?.mentionedUser) ||
                     (key === 'overdue' && filters.slaStatus === 'breached') ||
                     (key === 'unassigned' && filters.assignee?.includes('unassigned')) ||
-                    (key === 'today' && filters.dateRange)
-                      ? `bg-${color}-100 text-${color}-700 border border-${color}-200`
-                      : `text-slate-600 hover:text-slate-900 hover:bg-${color}-50`
-                  }`}
-                >
-                  <Icon className="w-3 h-3" />
-                  <span>{label}</span>
-                </button>
-              ))}
+                    (key === 'today' && filters.dateRange);
+                  
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => applyQuickFilter(key)}
+                      className={`group relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+                        isActive
+                          ? `bg-gradient-to-r ${getGradientClasses(color)} text-white shadow-lg shadow-${color}-500/25`
+                          : `text-slate-600 hover:text-slate-900 bg-slate-50/50 hover:bg-slate-100/80 border border-slate-200/50`
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : `text-${color}-500`}`} />
+                      <span className="whitespace-nowrap">{label}</span>
+                      {isActive && (
+                        <div className={`absolute inset-0 rounded-xl bg-gradient-to-r ${getGradientClasses(color)} opacity-20 animate-pulse`}></div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-slate-100 rounded-xl p-1">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-all duration-200 ${
-                  viewMode === 'grid' 
-                    ? 'bg-white shadow-sm text-slate-900' 
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-lg transition-all duration-200 ${
-                  viewMode === 'list' 
-                    ? 'bg-white shadow-sm text-slate-900' 
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Advanced Filters */}
-            <button
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-200 ${
-                showAdvancedFilters || Object.keys(filters).length > 0
-                  ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <Filter className="w-4 h-4" />
-              <span className="font-medium">Filters</span>
-              {Object.keys(filters).length > 0 && (
-                <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
-                  {Object.keys(filters).length}
-                </span>
-              )}
-            </button>
-
-            {/* Sort Controls */}
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-slate-600">Sort by:</span>
-              {['updatedAt', 'createdAt', 'priority', 'dueDate'].map((field) => (
+            {/* View Controls */}
+            <div className="flex items-center gap-3">
+              {/* View Mode Toggle */}
+              <div className="flex items-center bg-slate-100/60 backdrop-blur-sm rounded-2xl p-1.5 border border-slate-200/40">
                 <button
-                  key={field}
-                  onClick={() => toggleSort(field as typeof sortBy)}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm transition-all duration-200 ${
-                    sortBy === field
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  onClick={() => setViewMode('grid')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    viewMode === 'grid' 
+                      ? 'bg-white shadow-md text-slate-900 border border-slate-200/50' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
                   }`}
                 >
-                  <span className="capitalize">{field.replace('At', '').replace('Date', ' Date')}</span>
-                  {sortBy === field && (
-                    sortOrder === 'desc' ? <SortDesc className="w-3 h-3" /> : <SortAsc className="w-3 h-3" />
-                  )}
+                  <Grid3X3 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Grid</span>
                 </button>
-              ))}
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    viewMode === 'list' 
+                      ? 'bg-white shadow-md text-slate-900 border border-slate-200/50' 
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+              </div>
+
+              {/* Advanced Filters */}
+              <button
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`group relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+                  showAdvancedFilters || Object.keys(filters).length > 0
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25'
+                    : 'text-slate-600 hover:text-slate-900 bg-slate-50/50 hover:bg-slate-100/80 border border-slate-200/50'
+                }`}
+              >
+                <Filter className="w-4 h-4" />
+                <span className="whitespace-nowrap">Filters</span>
+                {Object.keys(filters).length > 0 && (
+                  <span className="ml-1 bg-white/20 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
+                    {Object.keys(filters).length}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            {selectedTickets.length > 0 && (
-              <span className="text-sm text-slate-600">
-                {selectedTickets.length} selected
-              </span>
-            )}
-            
-            {Object.keys(filters).length > 0 && (
-              <button
-                onClick={() => setFilters({})}
-                className="flex items-center space-x-2 px-3 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all duration-200"
-              >
-                <X className="w-4 h-4" />
-                <span className="text-sm font-medium">Clear filters</span>
+          {/* Secondary Controls Row */}
+          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+            {/* Sort Controls */}
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-slate-600">Sort by</span>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { field: 'updatedAt', label: 'Updated', icon: RefreshCw },
+                  { field: 'createdAt', label: 'Created', icon: Clock },
+                  { field: 'priority', label: 'Priority', icon: TrendingUp },
+                  { field: 'dueDate', label: 'Due Date', icon: Calendar }
+                ].map(({ field, label, icon: Icon }) => (
+                  <button
+                    key={field}
+                    onClick={() => toggleSort(field as typeof sortBy)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:scale-105 ${
+                      sortBy === field
+                        ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/25'
+                        : 'text-slate-600 hover:text-slate-900 bg-slate-50/50 hover:bg-slate-100/80 border border-slate-200/50'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span className="whitespace-nowrap">{label}</span>
+                    {sortBy === field && (
+                      sortOrder === 'desc' ? <SortDesc className="w-3 h-3" /> : <SortAsc className="w-3 h-3" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Controls */}
+            <div className="flex flex-wrap items-center gap-3">
+              {selectedTickets.length > 0 && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/80 border border-blue-200/50 rounded-xl">
+                  <span className="text-sm font-medium text-blue-700">
+                    {selectedTickets.length} selected
+                  </span>
+                </div>
+              )}
+              
+              {Object.keys(filters).length > 0 && (
+                <button
+                  onClick={() => setFilters({})}
+                  className="flex items-center gap-2 px-3 py-2 text-red-600 hover:text-red-700 bg-red-50/50 hover:bg-red-100/80 border border-red-200/50 rounded-xl transition-all duration-200 hover:scale-105"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="text-sm font-medium whitespace-nowrap">Clear filters</span>
+                </button>
+              )}
+              
+              <button className="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 bg-slate-50/50 hover:bg-slate-100/80 border border-slate-200/50 rounded-xl transition-all duration-200 hover:scale-105">
+                <Download className="w-4 h-4" />
+                <span className="font-medium whitespace-nowrap">Export</span>
               </button>
-            )}
-            
-            <button className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all duration-200">
-              <Download className="w-4 h-4" />
-              <span className="font-medium">Export</span>
-            </button>
+            </div>
           </div>
         </div>
 
