@@ -47,6 +47,16 @@ app.get('/debug', (req: Request, res: Response) => {
         hasCredentials: !!(process.env.BIGQUERY_CREDENTIALS || process.env.VITE_BIGQUERY_CREDENTIALS),
         credentialsLength: (process.env.BIGQUERY_CREDENTIALS || process.env.VITE_BIGQUERY_CREDENTIALS)?.length || 0,
         keyFilename: process.env.BIGQUERY_KEY_PATH || process.env.VITE_BIGQUERY_KEY_PATH || 'NOT SET'
+      },
+      allEnvVars: {
+        BIGQUERY_PROJECT_ID: !!process.env.BIGQUERY_PROJECT_ID,
+        VITE_BIGQUERY_PROJECT_ID: !!process.env.VITE_BIGQUERY_PROJECT_ID,
+        BIGQUERY_CREDENTIALS: !!process.env.BIGQUERY_CREDENTIALS,
+        VITE_BIGQUERY_CREDENTIALS: !!process.env.VITE_BIGQUERY_CREDENTIALS,
+        BIGQUERY_DATASET_ID: !!process.env.BIGQUERY_DATASET_ID,
+        VITE_BIGQUERY_DATASET_ID: !!process.env.VITE_BIGQUERY_DATASET_ID,
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: process.env.PORT
       }
     });
   } catch (error) {
