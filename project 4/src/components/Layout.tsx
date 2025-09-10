@@ -136,7 +136,7 @@ export const Layout: React.FC<LayoutProps> = ({
                       ? 'bg-gradient-to-br from-slate-700 to-slate-800' 
                       : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'
                   }`}>
-                    <LogoIcon className="w-6 h-6" />
+                    <LogoIcon className="w-full h-full object-cover" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full animate-pulse"></div>
                 </div>

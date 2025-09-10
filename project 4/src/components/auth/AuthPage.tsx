@@ -47,7 +47,7 @@ export const AuthPage: React.FC = () => {
               <div className="flex items-center space-x-4 mb-8">
                 <div className="relative">
                   <div className="w-14 h-14 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden">
-                    <Logo className="w-10 h-10" />
+                    <Logo className="w-full h-full object-cover" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full animate-pulse"></div>
                 </div>
