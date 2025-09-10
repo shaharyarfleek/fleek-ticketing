@@ -59,7 +59,7 @@ export const TicketList: React.FC<TicketListProps> = ({
   const handleCreateTicket = async (ticketData: any) => {
     try {
       const newTicket: Ticket = {
-        id: `TK-2024-${String(tickets.length + 1).padStart(3, '0')}`,
+        id: `TK-2024-${String((tickets?.length || 0) + 1).padStart(3, '0')}`,
         title: ticketData.title,
         description: ticketData.description,
         status: 'new',
@@ -170,7 +170,7 @@ export const TicketList: React.FC<TicketListProps> = ({
 
   // Smart filtering with AI-like search
   const filteredAndSortedTickets = useMemo(() => {
-    let filtered = tickets.filter(ticket => {
+    let filtered = (tickets || []).filter(ticket => {
       // Advanced search logic
       if (searchQuery) {
         const searchLower = searchQuery.toLowerCase();
@@ -309,6 +309,18 @@ export const TicketList: React.FC<TicketListProps> = ({
       setSortOrder('desc');
     }
   };
+
+  // Show loading state if data is still loading
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading tickets...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">

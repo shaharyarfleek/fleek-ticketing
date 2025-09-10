@@ -253,8 +253,4 @@ REACT_APP_SUPABASE_URL=https://your-project-id.supabase.co
 REACT_APP_SUPABASE_ANON_KEY=your-anon-key-here
 `;
 
-console.log('📚 Supabase Schema SQL and Environment Template Ready:');
-console.log('1. Create a new Supabase project at https://supabase.com');
-console.log('2. Copy the CREATE_TABLES_SQL above and run it in Supabase SQL Editor');
-console.log('3. Add your Supabase credentials to .env file');
-console.log('4. Restart the development server');
+// Schema and setup instructions are in SUPABASE_SETUP.md
