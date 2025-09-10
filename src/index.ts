@@ -191,6 +191,7 @@ app.get('/api/orders', async (req: Request, res: Response) => {
       FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
       WHERE fleek_id IS NOT NULL
       ORDER BY fleek_id
+      LIMIT 10
     `;
 
     console.log('Executing query:', query);
