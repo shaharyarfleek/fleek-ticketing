@@ -181,13 +181,9 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
     // Find the order details from BigQuery data
     const selectedOrder = orders.find(order => order.orderLineId === orderNum);
     if (selectedOrder) {
-      // Auto-populate order value and currency from BigQuery data
-      if (selectedOrder.orderValue && !orderValue) {
-        setOrderValue(selectedOrder.orderValue.toString());
-      }
-      if (selectedOrder.currency) {
-        setCurrency(selectedOrder.currency as Currency);
-      }
+      // Always auto-populate order value and currency from BigQuery data
+      setOrderValue(selectedOrder.orderValue ? selectedOrder.orderValue.toString() : '0');
+      setCurrency(selectedOrder.currency as Currency);
     }
   };
 
@@ -262,6 +258,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   const clearOrderNumber = () => {
     setOrderNumber('');
     setOrderNumberSearch('');
+    setOrderValue('');
+    setCurrency('GBP');
     setShowOrderNumberDropdown(false);
   };
 
@@ -570,13 +568,21 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                     min="0"
                     value={orderValue}
                     onChange={(e) => setOrderValue(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg pl-8 pr-4 py-3 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                    placeholder="0.00"
+                    readOnly={!!orderNumber}
+                    className={`w-full border rounded-lg pl-8 pr-4 py-3 transition-all duration-200 ${
+                      orderNumber 
+                        ? 'bg-gray-50 border-gray-200 text-gray-700 cursor-not-allowed' 
+                        : 'border-gray-200 focus:ring-1 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
+                    placeholder={orderNumber ? 'Auto-filled from selected order' : '0.00'}
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   💰 Amount in British Pounds
-                  <span> (auto-populated from BigQuery when available)</span>
+                  {orderNumber 
+                    ? <span className="text-green-600"> • Auto-filled from selected order</span>
+                    : <span> • Enter manually or select an order above</span>
+                  }
                 </p>
               </div>
 
