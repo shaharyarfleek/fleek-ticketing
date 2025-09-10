@@ -71,6 +71,32 @@ app.get('/debug', (req: Request, res: Response) => {
   }
 });
 
+// Get count of orders
+app.get('/api/orders/count', async (req: Request, res: Response) => {
+  try {
+    const query = `
+      SELECT COUNT(DISTINCT fleek_id) as total_orders
+      FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
+      WHERE fleek_id IS NOT NULL
+    `;
+
+    console.log('Executing count query:', query);
+    const [rows] = await bigquery.query({ query });
+    
+    res.json({
+      success: true,
+      total_orders: rows[0]?.total_orders || 0
+    });
+  } catch (error) {
+    console.error('Error fetching orders count:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch orders count',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Get all order line IDs
 app.get('/api/orders', async (req: Request, res: Response) => {
   try {
@@ -79,7 +105,8 @@ app.get('/api/orders', async (req: Request, res: Response) => {
         fleek_id as orderLineId,
         total_order_line_amount as orderValue
       FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
-      LIMIT 1000
+      WHERE fleek_id IS NOT NULL
+      ORDER BY fleek_id
     `;
 
     console.log('Executing query:', query);
