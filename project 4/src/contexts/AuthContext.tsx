@@ -288,7 +288,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         lastLogin: new Date(),
         isActive: true,
         isBlocked: false,
-        isBlocked: false,
       };
 
       // Add to database and save
