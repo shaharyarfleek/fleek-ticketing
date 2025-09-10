@@ -119,7 +119,69 @@ app.get('/api/orders/count', async (req: Request, res: Response) => {
   }
 });
 
-// Get all order line IDs
+// Search orders by query
+app.get('/api/orders/search', async (req: Request, res: Response) => {
+  try {
+    const searchQuery = req.query.q as string;
+    const limit = parseInt(req.query.limit as string) || 50;
+    
+    if (!searchQuery || searchQuery.trim().length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        count: 0,
+        message: 'Enter search query to find orders'
+      });
+    }
+
+    const query = `
+      SELECT DISTINCT 
+        fleek_id as orderLineId,
+        total_order_line_amount as orderValue
+      FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
+      WHERE fleek_id IS NOT NULL 
+        AND LOWER(fleek_id) LIKE LOWER(@searchQuery)
+      ORDER BY fleek_id
+      LIMIT @limit
+    `;
+
+    const options = {
+      query,
+      params: { 
+        searchQuery: `%${searchQuery}%`,
+        limit: limit 
+      }
+    };
+
+    console.log('Executing search query:', query, 'with params:', options.params);
+    const [rows] = await bigquery.query(options);
+    
+    const ordersWithCurrency = rows
+      .filter((row: any) => row.orderLineId && row.orderLineId.trim() !== '')
+      .map((row: any) => ({
+        orderLineId: row.orderLineId,
+        orderValue: row.orderValue || 0,
+        currency: 'GBP'
+      }));
+
+    res.json({
+      success: true,
+      data: ordersWithCurrency,
+      count: ordersWithCurrency.length,
+      searchQuery: searchQuery,
+      limit: limit
+    });
+  } catch (error) {
+    console.error('Error searching orders:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to search orders',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get all order line IDs (deprecated - use search instead)
 app.get('/api/orders', async (req: Request, res: Response) => {
   try {
     const query = `

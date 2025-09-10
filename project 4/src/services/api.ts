@@ -56,16 +56,23 @@ class ApiService {
   }
 
   async getOrders(): Promise<Order[]> {
+    // Deprecated: This loads all orders and can crash the UI
+    // Use searchOrders instead for better performance
+    console.warn('getOrders() is deprecated. Use searchOrders() for better performance.');
+    return [];
+  }
+
+  async searchOrders(searchQuery: string, limit: number = 50): Promise<Order[]> {
     try {
-      const response = await this.request<ApiResponse<Order[]>>('/api/orders');
+      const response = await this.request<ApiResponse<Order[]>>(`/api/orders/search?q=${encodeURIComponent(searchQuery)}&limit=${limit}`);
       
       if (response.success && response.data) {
         return response.data;
       } else {
-        throw new Error(response.error || response.message || 'Failed to fetch orders');
+        throw new Error(response.error || response.message || 'Failed to search orders');
       }
     } catch (error) {
-      console.error('Error fetching orders from BigQuery:', error);
+      console.error('Error searching orders from BigQuery:', error);
       throw error;
     }
   }

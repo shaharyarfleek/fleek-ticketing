@@ -5,7 +5,7 @@ import { Priority, Department, User, Attachment, IssueType, Currency } from '../
 import { FileUpload, AttachmentList } from './FileUpload';
 import { TagGenerator } from '../utils/tagGenerator';
 import { useAuth } from '../contexts/AuthContext';
-import { useOrders } from '../hooks/useOrders';
+import { useOrderSearch } from '../hooks/useOrderSearch';
 
 interface NewTicketModalProps {
   isOpen: boolean;
@@ -31,7 +31,7 @@ const currencies: Currency[] = ['GBP', 'USD', 'EUR', 'CAD', 'AUD', 'JPY', 'CNY',
 
 export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const { authState } = useAuth();
-  const { orders, loading: ordersLoading, error: ordersError, refetch: refetchOrders } = useOrders();
+  const { orders, loading: ordersLoading, error: ordersError, searchOrders, clearSearch } = useOrderSearch();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -60,7 +60,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   const dropdownRef = useRef<HTMLDivElement>(null);
   const orderDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Get unique order numbers from BigQuery data
+  // Get unique order numbers from search results
   const orderNumbers = orders.map(order => order.orderLineId);
 
   // Close dropdowns when clicking outside
@@ -218,10 +218,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
     user.department.name.toLowerCase().includes(assigneeSearch.toLowerCase())
   );
 
-  // Filter order numbers based on search
-  const filteredOrderNumbers = orderNumbers.filter(orderNum =>
-    orderNum.toLowerCase().includes(orderNumberSearch.toLowerCase())
-  );
+  // Use search results directly (no client-side filtering needed)
+  const filteredOrderNumbers = orderNumbers;
 
   // Group filtered users by department
   const usersByDepartment = departments.map(dept => ({
@@ -261,12 +259,20 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
     setOrderValue('');
     setCurrency('GBP');
     setShowOrderNumberDropdown(false);
+    clearSearch();
   };
 
-  const handleOrderNumberSearchChange = (value: string) => {
+  const handleOrderNumberSearchChange = async (value: string) => {
     setOrderNumberSearch(value);
     setOrderNumber(value);
     setShowOrderNumberDropdown(true);
+    
+    // Search for orders if user has typed at least 2 characters
+    if (value.trim().length >= 2) {
+      await searchOrders(value.trim());
+    } else {
+      clearSearch();
+    }
   };
 
   // Check if order fields should be shown
@@ -452,14 +458,14 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                     <Package className="w-4 h-4 inline mr-1" />
                     Order Number
                   </span>
-                  {ordersError && (
+                  {ordersError && orderNumberSearch.length >= 2 && (
                     <button
                       type="button"
-                      onClick={() => refetchOrders()}
+                      onClick={() => searchOrders(orderNumberSearch)}
                       className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
                     >
                       <RefreshCw className="w-3 h-3" />
-                      Retry
+                      Retry Search
                     </button>
                   )}
                 </label>
@@ -500,19 +506,28 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                           <div className="text-sm">Error loading orders</div>
                           <button
                             type="button"
-                            onClick={() => refetchOrders()}
+                            onClick={() => orderNumberSearch.length >= 2 && searchOrders(orderNumberSearch)}
                             className="text-xs text-blue-600 hover:text-blue-700 mt-1"
+                            disabled={orderNumberSearch.length < 2}
                           >
-                            Click to retry
+                            {orderNumberSearch.length >= 2 ? 'Retry search' : 'Enter search term to retry'}
                           </button>
                         </div>
                       )}
-                      {!ordersLoading && !ordersError && filteredOrderNumbers.length === 0 && (
+                      {!ordersLoading && !ordersError && filteredOrderNumbers.length === 0 && orderNumberSearch.length >= 2 && (
                         <div className="px-4 py-2 text-gray-500 text-center">
                           <div className="text-sm">
-                            <span>
-                              {orderNumberSearch ? `No orders found for "${orderNumberSearch}"` : 'No orders available'}
-                            </span>
+                            No orders found matching "{orderNumberSearch}"
+                          </div>
+                          <div className="text-xs mt-1">
+                            Try a different search term or order ID
+                          </div>
+                        </div>
+                      )}
+                      {!ordersLoading && !ordersError && orderNumberSearch.length < 2 && orderNumberSearch.length > 0 && (
+                        <div className="px-4 py-2 text-gray-500 text-center">
+                          <div className="text-sm">
+                            Type at least 2 characters to search orders
                           </div>
                         </div>
                       )}
@@ -536,20 +551,20 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  🔍 Searchable field • 
-                  {ordersLoading ? '⏳ Loading from BigQuery...' : `📋 ${orderNumbers.length} orders available`}
+                  🔍 Type 2+ characters to search • 
+                  {ordersLoading ? '⏳ Searching BigQuery...' : orders.length > 0 ? `📋 ${orders.length} matches found` : 'Enter order number to search'}
                 </p>
-                {!ordersLoading && orderNumbers.length > 0 && (
+                {!ordersLoading && orders.length > 0 && (
                   <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
                     <div className="text-xs text-green-700">
-                      <strong>Connected to BigQuery:</strong> Live order data from your database.
+                      <strong>BigQuery Search:</strong> Found {orders.length} matching orders.
                     </div>
                   </div>
                 )}
                 {ordersError && (
                   <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
                     <div className="text-xs text-red-700">
-                      <strong>Error:</strong> {ordersError}
+                      <strong>Search Error:</strong> {ordersError}
                     </div>
                   </div>
                 )}
