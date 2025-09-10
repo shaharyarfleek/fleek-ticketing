@@ -15,14 +15,16 @@ app.use(express.json());
 
 // Initialize BigQuery
 const bigquery = new BigQuery({
-  projectId: process.env.VITE_BIGQUERY_PROJECT_ID,
-  credentials: process.env.VITE_BIGQUERY_CREDENTIALS ? 
-    JSON.parse(process.env.VITE_BIGQUERY_CREDENTIALS) : undefined,
-  keyFilename: process.env.VITE_BIGQUERY_KEY_PATH
+  projectId: process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID,
+  credentials: process.env.BIGQUERY_CREDENTIALS ? 
+    JSON.parse(process.env.BIGQUERY_CREDENTIALS) : 
+    process.env.VITE_BIGQUERY_CREDENTIALS ? 
+      JSON.parse(process.env.VITE_BIGQUERY_CREDENTIALS) : undefined,
+  keyFilename: process.env.BIGQUERY_KEY_PATH || process.env.VITE_BIGQUERY_KEY_PATH
 });
 
-const datasetId = process.env.VITE_BIGQUERY_DATASET_ID || 'fleek_raw';
-const tableId = process.env.VITE_BIGQUERY_TABLE_ID || 'order_line_status_details';
+const datasetId = process.env.BIGQUERY_DATASET_ID || process.env.VITE_BIGQUERY_DATASET_ID || 'fleek_raw';
+const tableId = process.env.BIGQUERY_TABLE_ID || process.env.VITE_BIGQUERY_TABLE_ID || 'order_line_status_details';
 
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
@@ -39,12 +41,12 @@ app.get('/debug', (req: Request, res: Response) => {
     res.json({
       status: 'Debug Info',
       config: {
-        projectId: process.env.VITE_BIGQUERY_PROJECT_ID || 'NOT SET',
+        projectId: process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID || 'NOT SET',
         datasetId: datasetId,
         tableId: tableId,
-        hasCredentials: !!process.env.VITE_BIGQUERY_CREDENTIALS,
-        credentialsLength: process.env.VITE_BIGQUERY_CREDENTIALS?.length || 0,
-        keyFilename: process.env.VITE_BIGQUERY_KEY_PATH || 'NOT SET'
+        hasCredentials: !!(process.env.BIGQUERY_CREDENTIALS || process.env.VITE_BIGQUERY_CREDENTIALS),
+        credentialsLength: (process.env.BIGQUERY_CREDENTIALS || process.env.VITE_BIGQUERY_CREDENTIALS)?.length || 0,
+        keyFilename: process.env.BIGQUERY_KEY_PATH || process.env.VITE_BIGQUERY_KEY_PATH || 'NOT SET'
       }
     });
   } catch (error) {
@@ -52,8 +54,8 @@ app.get('/debug', (req: Request, res: Response) => {
       status: 'Error',
       error: error instanceof Error ? error.message : 'Unknown error',
       config: {
-        projectId: process.env.VITE_BIGQUERY_PROJECT_ID || 'NOT SET',
-        hasCredentials: !!process.env.VITE_BIGQUERY_CREDENTIALS
+        projectId: process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID || 'NOT SET',
+        hasCredentials: !!(process.env.BIGQUERY_CREDENTIALS || process.env.VITE_BIGQUERY_CREDENTIALS)
       }
     });
   }
@@ -66,7 +68,7 @@ app.get('/api/orders', async (req: Request, res: Response) => {
       SELECT DISTINCT 
         fleek_id as orderLineId,
         total_order_line_amount as orderValue
-      FROM \`${process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
       LIMIT 1000
     `;
 
@@ -94,10 +96,10 @@ app.get('/api/orders', async (req: Request, res: Response) => {
       error: 'Failed to fetch orders',
       message: error instanceof Error ? error.message : 'Unknown error',
       details: {
-        projectId: process.env.VITE_BIGQUERY_PROJECT_ID,
+        projectId: process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID,
         datasetId: datasetId,
         tableId: tableId,
-        hasCredentials: !!process.env.VITE_BIGQUERY_CREDENTIALS
+        hasCredentials: !!(process.env.BIGQUERY_CREDENTIALS || process.env.VITE_BIGQUERY_CREDENTIALS)
       }
     });
   }
@@ -112,7 +114,7 @@ app.get('/api/orders/:orderLineId', async (req: Request, res: Response) => {
       SELECT 
         fleek_id as orderLineId,
         total_order_line_amount as orderValue
-      FROM \`${process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
+      FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
       WHERE fleek_id = @orderLineId
       LIMIT 1
     `;

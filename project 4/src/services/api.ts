@@ -45,22 +45,11 @@ class ApiService {
       if (response.success && response.data) {
         return response.data;
       } else {
-        throw new Error(response.error || 'Failed to fetch orders');
+        throw new Error(response.error || response.message || 'Failed to fetch orders');
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
-      
-      // Fallback to sample orders if BigQuery fails
-      console.warn('Using fallback sample orders due to API error');
-      return [
-        { orderLineId: 'FL-2024-8834', orderValue: 299.99, currency: 'GBP' },
-        { orderLineId: 'FL-2024-7721', orderValue: 2450.00, currency: 'GBP' },
-        { orderLineId: 'FL-2024-6543', orderValue: 1250.00, currency: 'GBP' },
-        { orderLineId: 'FL-2024-5432', orderValue: 129.99, currency: 'GBP' },
-        { orderLineId: 'FL-2024-3210', orderValue: 1250.00, currency: 'GBP' },
-        { orderLineId: 'FL-2024-2109', orderValue: 159.99, currency: 'GBP' },
-        { orderLineId: '62495', orderValue: 1250.00, currency: 'GBP' }
-      ];
+      console.error('Error fetching orders from BigQuery:', error);
+      throw error;
     }
   }
 

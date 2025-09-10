@@ -19,17 +19,10 @@ export const useOrders = (): UseOrdersState => {
       setError(null);
       const fetchedOrders = await apiService.getOrders();
       setOrders(fetchedOrders);
-      
-      // Check if we're using fallback data
-      if (fetchedOrders.length > 0 && fetchedOrders[0].orderLineId === 'FL-2024-8834') {
-        console.log('Using sample orders (BigQuery connection may be unavailable)');
-      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch orders';
-      setError(`Unable to connect to BigQuery. ${errorMessage}`);
-      console.error('Error fetching orders:', err);
-      
-      // Still set empty orders on error
+      setError(errorMessage);
+      console.error('Error fetching orders from BigQuery:', err);
       setOrders([]);
     } finally {
       setLoading(false);
