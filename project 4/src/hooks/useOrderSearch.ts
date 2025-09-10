@@ -1,32 +1,7 @@
 import { useState, useCallback, useTransition, useRef } from 'react';
 import { apiService, Order } from '../services/api';
 
-// Debounce hook for search optimization
-function useDebounce<T extends (...args: any[]) => any>(
-  callback: T,
-  delay: number
-): T {
-  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
-
-  const debouncedCallback = useCallback(
-    (...args: Parameters<T>) => {
-      // Clear existing timer
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-
-      // Set new timer
-      const newTimer = setTimeout(() => {
-        callback(...args);
-      }, delay);
-
-      setDebounceTimer(newTimer);
-    },
-    [callback, delay, debounceTimer]
-  ) as T;
-
-  return debouncedCallback;
-}
+// Note: Debouncing is now handled in the component via useEffect
 
 interface UseOrderSearchState {
   orders: Order[];
@@ -136,74 +111,18 @@ export const useOrderSearch = (): UseOrderSearchState => {
     }
   }, [startTransition]);
 
-  // Debounced search (waits 300ms after user stops typing)
-  const debouncedSearch = useDebounce(performSearch, 300);
-
   // Immediate search function for manual triggers (like clicking suggestions)
   const searchOrdersImmediate = async (searchQuery: string) => {
     await performSearch(searchQuery);
   };
 
-  // Ultra-lightweight typing handler (no blocking operations)
+  // Simplified search function - only called from useEffect
   const searchOrders = useCallback((searchQuery: string) => {
-    console.log(`⌨️ User typing: "${searchQuery}"`);
+    console.log(`🔍 Searching: "${searchQuery}"`);
     
-    // Only do absolutely essential UI updates immediately
-    // Use requestIdleCallback to defer even these updates if possible
-    if (window.requestIdleCallback) {
-      window.requestIdleCallback(() => {
-        setIsTyping(true);
-        
-        // Handle empty query
-        if (!searchQuery || searchQuery.trim().length === 0) {
-          startTransition(() => {
-            setOrders([]);
-            setSuggestions([]);
-            setError(null);
-            setSearchStats(null);
-            setIsTyping(false);
-          });
-          return;
-        }
-
-        // For very short queries, clear results but don't search
-        if (searchQuery.trim().length < 2) {
-          startTransition(() => {
-            setOrders([]);
-            setSuggestions([]);
-          });
-          return;
-        }
-
-        // Trigger debounced search
-        debouncedSearch(searchQuery);
-      });
-    } else {
-      // Fallback for browsers without requestIdleCallback
-      setIsTyping(true);
-      
-      if (!searchQuery || searchQuery.trim().length === 0) {
-        startTransition(() => {
-          setOrders([]);
-          setSuggestions([]);
-          setError(null);
-          setSearchStats(null);
-          setIsTyping(false);
-        });
-        return;
-      }
-
-      if (searchQuery.trim().length < 2) {
-        startTransition(() => {
-          setOrders([]);
-          setSuggestions([]);
-        });
-        return;
-      }
-
-      debouncedSearch(searchQuery);
-    }
-  }, [debouncedSearch, startTransition]);
+    // Just trigger the search directly - no complex logic
+    performSearch(searchQuery);
+  }, [performSearch]);
 
   const clearSearch = useCallback(() => {
     // Cancel any ongoing searches

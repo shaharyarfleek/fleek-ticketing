@@ -47,6 +47,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   const [orderNumber, setOrderNumber] = useState('');
   const [orderNumberSearch, setOrderNumberSearch] = useState('');
   const [showOrderNumberDropdown, setShowOrderNumberDropdown] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false);
   const [orderValue, setOrderValue] = useState('');
   const [refundValue, setRefundValue] = useState('');
   const [currency, setCurrency] = useState<Currency>('GBP');
@@ -66,6 +67,28 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   
   // Get unique order numbers from search results
   const orderNumbers = deferredOrders.map(order => order.orderLineId);
+
+  // Completely separate search effect - runs independently of typing
+  useEffect(() => {
+    // Set typing indicator immediately
+    setIsUserTyping(true);
+    
+    // Create a timer to search after user stops typing
+    const searchTimer = setTimeout(() => {
+      setIsUserTyping(false);
+      
+      if (orderNumberSearch.trim().length >= 2) {
+        searchOrders(orderNumberSearch.trim());
+      } else if (orderNumberSearch.trim().length === 0) {
+        clearSearch();
+      }
+    }, 300); // 300ms delay
+
+    // Cleanup timer on every change
+    return () => {
+      clearTimeout(searchTimer);
+    };
+  }, [orderNumberSearch]); // Only depends on the input value
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -267,17 +290,10 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   };
 
   const handleOrderNumberSearchChange = (value: string) => {
-    // Critical: Update input value FIRST with highest priority
+    // ONLY update input value - nothing else!
     setOrderNumberSearch(value);
     setOrderNumber(value);
-    
-    // Show dropdown immediately
     setShowOrderNumberDropdown(true);
-    
-    // Schedule search in background (completely non-blocking)
-    setTimeout(() => {
-      searchOrders(value.trim());
-    }, 0); // Next tick - doesn't block current render
   };
 
   // Check if order fields should be shown
@@ -499,7 +515,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                   
                   {showOrderNumberDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                      {isTyping && (
+                      {isUserTyping && (
                         <div className="px-4 py-3 text-gray-500 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <div className="flex gap-1">
@@ -511,7 +527,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                           </div>
                         </div>
                       )}
-                      {!isTyping && ordersLoading && (
+                      {!isUserTyping && ordersLoading && (
                         <div className="px-4 py-3 text-gray-500 text-center">
                           <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-1" />
                           <div className="text-sm">Searching cached orders...</div>
@@ -569,12 +585,12 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   🚀 Fast cached search • 
-                  {isTyping ? '⌨️ Typing...' : ordersLoading ? '⏳ Searching...' : orders.length > 0 ? `📋 ${orders.length} matches found` : 'Type 2+ characters to search'}
+                  {isUserTyping ? '⌨️ Typing...' : ordersLoading ? '⏳ Searching...' : orders.length > 0 ? `📋 ${orders.length} matches found` : 'Type 2+ characters to search'}
                   {cacheInfo && ` • 💾 ${cacheInfo.totalOrders?.toLocaleString()} orders cached`}
                 </p>
                 
                 {/* Search Suggestions - only show when not typing */}
-                {!isTyping && !ordersLoading && deferredSuggestions.length > 0 && orderNumberSearch.length >= 2 && (
+                {!isUserTyping && !ordersLoading && deferredSuggestions.length > 0 && orderNumberSearch.length >= 2 && (
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="text-xs font-medium text-blue-700 mb-2">💡 Quick Suggestions:</div>
                     <div className="flex flex-wrap gap-1">
