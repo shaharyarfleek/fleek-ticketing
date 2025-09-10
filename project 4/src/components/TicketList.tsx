@@ -267,6 +267,9 @@ export const TicketList: React.FC<TicketListProps> = ({
 
   // Department resolution hours analytics
   const departmentResolutionHours = useMemo(() => {
+    if (!departments || !Array.isArray(departments)) {
+      return [];
+    }
     const deptStats = departments.map(dept => {
       const deptTickets = filteredAndSortedTickets.filter(t => t.department.id === dept.id);
       const resolvedTickets = deptTickets.filter(t => t.status === 'resolved' && t.resolutionTime);
@@ -326,7 +329,7 @@ export const TicketList: React.FC<TicketListProps> = ({
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Department Resolution Hours Dashboard */}
-        {departmentResolutionHours.length > 0 && (
+        {departmentResolutionHours && departmentResolutionHours.length > 0 && (
           <div className="mb-8">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">

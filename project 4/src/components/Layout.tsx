@@ -56,8 +56,8 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   
-  const unreadCount = notifications.filter(n => !n.read).length;
-  const urgentCount = notifications.filter(n => n.priority === 'urgent' && !n.read).length;
+  const unreadCount = (notifications || []).filter(n => !n.read).length;
+  const urgentCount = (notifications || []).filter(n => n.priority === 'urgent' && !n.read).length;
 
   // Keyboard shortcuts
   useEffect(() => {

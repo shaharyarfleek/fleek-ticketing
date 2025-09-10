@@ -1,10 +1,13 @@
 import React from 'react';
-import { mockTickets, departments } from '../data/mockData';
+import { departments } from '../data/mockData';
 import { AnalyticsData, TicketStatus, Priority } from '../types';
 import { BarChart3, TrendingUp, Clock, AlertTriangle, CheckCircle2, Users, Zap, Target, Award, Activity, Timer } from 'lucide-react';
+import { useData } from '../contexts/DataContext';
 
 export const Analytics: React.FC = () => {
+  const { tickets } = useData();
   const analyticsData: AnalyticsData = React.useMemo(() => {
+    const mockTickets = tickets || [];
     const totalTickets = mockTickets.length;
     const openTickets = mockTickets.filter(t => ['new', 'assigned', 'in_progress', 'awaiting_response'].includes(t.status)).length;
     const resolvedTickets = mockTickets.filter(t => t.status === 'resolved').length;
