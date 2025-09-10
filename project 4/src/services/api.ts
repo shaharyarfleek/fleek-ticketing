@@ -64,10 +64,23 @@ class ApiService {
 
   async searchOrders(searchQuery: string, limit: number = 50): Promise<Order[]> {
     try {
-      const response = await this.request<ApiResponse<Order[]>>(`/api/search/orders?q=${encodeURIComponent(searchQuery)}&limit=${limit}`);
+      console.log(`Searching for orders with query: "${searchQuery}"`);
+      
+      // Get a reasonable sample size to search within (max 500 orders to avoid crashes)
+      const sampleSize = Math.min(500, limit * 10);
+      const response = await this.request<ApiResponse<Order[]>>(`/api/orders`);
       
       if (response.success && response.data) {
-        return response.data;
+        // Take only the first sampleSize orders to avoid crashes
+        const sampleOrders = response.data.slice(0, sampleSize);
+        
+        // Filter results client-side
+        const filtered = sampleOrders.filter(order => 
+          order.orderLineId.toLowerCase().includes(searchQuery.toLowerCase())
+        ).slice(0, limit);
+        
+        console.log(`Found ${filtered.length} matching orders from ${sampleOrders.length} sample orders`);
+        return filtered;
       } else {
         throw new Error(response.error || response.message || 'Failed to search orders');
       }
