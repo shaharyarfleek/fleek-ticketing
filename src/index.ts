@@ -32,7 +32,7 @@ app.get('/health', (req: Request, res: Response) => {
     status: 'OK', 
     message: 'BigQuery API Server is running',
     timestamp: new Date().toISOString(),
-    version: 'unlimited-orders-v1.0'
+    version: 'unlimited-orders-v2.0-deployed'
   });
 });
 
@@ -193,7 +193,8 @@ app.get('/api/orders/:orderLineId', async (req: Request, res: Response) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`BigQuery API Server running on http://localhost:${PORT}`);
+  console.log(`BigQuery API Server v2.0 running on http://localhost:${PORT}`);
   console.log(`Health check: http://localhost:${PORT}/health`);
   console.log(`Orders endpoint: http://localhost:${PORT}/api/orders`);
+  console.log(`Loading unlimited orders from BigQuery...`);
 });
