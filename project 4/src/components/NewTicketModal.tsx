@@ -541,9 +541,25 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                   {ordersLoading ? '⏳ Loading from BigQuery...' : `📋 ${orderNumbers.length} orders available`}
                 </p>
                 {!ordersLoading && orderNumbers.length > 0 && (
-                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="text-xs text-green-700">
-                      <strong>Connected to BigQuery:</strong> Live order data from your database.
+                  <div className={`mt-2 p-2 rounded-lg ${
+                    orders.length > 0 && orders[0].orderLineId === 'FL-2024-8834'
+                      ? 'bg-amber-50 border border-amber-200'
+                      : 'bg-green-50 border border-green-200'
+                  }`}>
+                    <div className={`text-xs ${
+                      orders.length > 0 && orders[0].orderLineId === 'FL-2024-8834'
+                        ? 'text-amber-700'
+                        : 'text-green-700'
+                    }`}>
+                      {orders.length > 0 && orders[0].orderLineId === 'FL-2024-8834' ? (
+                        <>
+                          <strong>Sample Data:</strong> Using demonstration orders. BigQuery connection may be unavailable.
+                        </>
+                      ) : (
+                        <>
+                          <strong>Connected to BigQuery:</strong> Live order data from your database.
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
