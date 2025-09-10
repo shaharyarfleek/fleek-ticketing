@@ -119,22 +119,19 @@ app.get('/api/orders/count', async (req: Request, res: Response) => {
   }
 });
 
-// Test search endpoint
-app.get('/api/orders/search/test', (req: Request, res: Response) => {
-  res.json({
-    success: true,
-    message: 'Search endpoint is working',
-    query: req.query
-  });
-});
-
-// Search orders by query
+// Search orders by query (MUST be before parameterized routes)
 app.get('/api/orders/search', async (req: Request, res: Response) => {
+  console.log('=== SEARCH ENDPOINT HIT ===');
+  console.log('Query params:', req.query);
+  
   try {
     const searchQuery = req.query.q as string;
     const limit = parseInt(req.query.limit as string) || 50;
     
+    console.log(`Search query: "${searchQuery}", limit: ${limit}`);
+    
     if (!searchQuery || searchQuery.trim().length === 0) {
+      console.log('Empty search query, returning empty results');
       return res.json({
         success: true,
         data: [],
@@ -154,14 +151,10 @@ app.get('/api/orders/search', async (req: Request, res: Response) => {
       LIMIT ${limit}
     `;
 
-    const options = {
-      query
-    };
-
-    console.log('Executing search query:', query);
-    const [rows] = await bigquery.query(options);
+    console.log('Executing BigQuery search:', query);
+    const [rows] = await bigquery.query({ query });
     
-    console.log(`BigQuery returned ${rows.length} rows for search: "${searchQuery}"`);
+    console.log(`BigQuery returned ${rows.length} rows`);
     
     const ordersWithCurrency = rows
       .filter((row: any) => row.orderLineId && row.orderLineId.trim() !== '')
@@ -172,17 +165,17 @@ app.get('/api/orders/search', async (req: Request, res: Response) => {
       }));
 
     console.log(`After filtering: ${ordersWithCurrency.length} orders`);
+    console.log('Sample results:', ordersWithCurrency.slice(0, 2));
 
     res.json({
       success: true,
       data: ordersWithCurrency,
       count: ordersWithCurrency.length,
       searchQuery: searchQuery,
-      limit: limit,
-      totalRawRows: rows.length
+      limit: limit
     });
   } catch (error) {
-    console.error('Error searching orders:', error);
+    console.error('Search error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to search orders',
