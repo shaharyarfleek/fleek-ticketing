@@ -12,6 +12,19 @@ export interface ApiResponse<T> {
   count?: number;
   error?: string;
   message?: string;
+  suggestions?: string[];
+  searchStats?: {
+    exactMatches: number;
+    prefixMatches: number;
+    containsMatches: number;
+    fuzzyMatches: number;
+  };
+  cacheInfo?: {
+    totalOrders: number;
+    lastUpdated: string;
+    source: string;
+    searchTimeMs?: number;
+  };
 }
 
 class ApiService {
@@ -62,30 +75,32 @@ class ApiService {
     return [];
   }
 
-  async searchOrders(searchQuery: string, limit: number = 50): Promise<Order[]> {
+  async searchOrders(searchQuery: string, limit: number = 50): Promise<{
+    orders: Order[];
+    suggestions: string[];
+    searchStats?: any;
+    cacheInfo?: any;
+  }> {
     try {
-      console.log(`Searching for orders with query: "${searchQuery}"`);
+      console.log(`🚀 Fast cached search for: "${searchQuery}"`);
       
-      // Get a reasonable sample size to search within (max 500 orders to avoid crashes)
-      const sampleSize = Math.min(500, limit * 10);
-      const response = await this.request<ApiResponse<Order[]>>(`/api/orders`);
+      const response = await this.request<ApiResponse<Order[]>>(`/api/search/orders?q=${encodeURIComponent(searchQuery)}&limit=${limit}`);
       
       if (response.success && response.data) {
-        // Take only the first sampleSize orders to avoid crashes
-        const sampleOrders = response.data.slice(0, sampleSize);
+        console.log(`✅ Found ${response.data.length} results from cached data`);
+        console.log(`📊 Cache info: ${response.cacheInfo?.totalOrders} total orders, updated ${response.cacheInfo?.lastUpdated}`);
         
-        // Filter results client-side
-        const filtered = sampleOrders.filter(order => 
-          order.orderLineId.toLowerCase().includes(searchQuery.toLowerCase())
-        ).slice(0, limit);
-        
-        console.log(`Found ${filtered.length} matching orders from ${sampleOrders.length} sample orders`);
-        return filtered;
+        return {
+          orders: response.data,
+          suggestions: response.suggestions || [],
+          searchStats: response.searchStats,
+          cacheInfo: response.cacheInfo
+        };
       } else {
         throw new Error(response.error || response.message || 'Failed to search orders');
       }
     } catch (error) {
-      console.error('Error searching orders from BigQuery:', error);
+      console.error('Error searching cached orders:', error);
       throw error;
     }
   }

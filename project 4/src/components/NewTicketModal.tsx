@@ -31,7 +31,7 @@ const currencies: Currency[] = ['GBP', 'USD', 'EUR', 'CAD', 'AUD', 'JPY', 'CNY',
 
 export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const { authState } = useAuth();
-  const { orders, loading: ordersLoading, error: ordersError, searchOrders, clearSearch } = useOrderSearch();
+  const { orders, suggestions, loading: ordersLoading, error: ordersError, searchStats, cacheInfo, searchOrders, clearSearch } = useOrderSearch();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -551,20 +551,56 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  🔍 Type 2+ characters to search • 
-                  {ordersLoading ? '⏳ Searching BigQuery...' : orders.length > 0 ? `📋 ${orders.length} matches found` : 'Enter order number to search'}
+                  🚀 Fast cached search • 
+                  {ordersLoading ? '⏳ Searching...' : orders.length > 0 ? `📋 ${orders.length} matches found` : 'Type 2+ characters to search'}
+                  {cacheInfo && ` • 💾 ${cacheInfo.totalOrders?.toLocaleString()} orders cached`}
                 </p>
-                {!ordersLoading && orders.length > 0 && (
-                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="text-xs text-green-700">
-                      <strong>BigQuery Search:</strong> Found {orders.length} matching orders.
+                
+                {/* Search Suggestions */}
+                {!ordersLoading && suggestions.length > 0 && orderNumberSearch.length >= 2 && (
+                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="text-xs font-medium text-blue-700 mb-2">💡 Quick Suggestions:</div>
+                    <div className="flex flex-wrap gap-1">
+                      {suggestions.slice(0, 6).map((suggestion, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setOrderNumberSearch(suggestion);
+                            setOrderNumber(suggestion);
+                            handleOrderSelect(suggestion);
+                            setShowOrderNumberDropdown(false);
+                          }}
+                          className="px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors duration-200"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
+                
+                {/* Cache Status */}
+                {!ordersLoading && cacheInfo && (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-xs text-green-700">
+                      <strong>⚡ High-Speed Cache:</strong> {orders.length} results from {cacheInfo.totalOrders?.toLocaleString()} cached orders
+                      {searchStats && (
+                        <span className="ml-2">
+                          ({searchStats.exactMatches} exact, {searchStats.prefixMatches} prefix, {searchStats.containsMatches} contains)
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-green-600 mt-1">
+                      Last updated: {cacheInfo.lastUpdated ? new Date(cacheInfo.lastUpdated).toLocaleTimeString() : 'N/A'} • Refreshes hourly
+                    </div>
+                  </div>
+                )}
+                
                 {ordersError && (
                   <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-lg">
                     <div className="text-xs text-red-700">
-                      <strong>Search Error:</strong> {ordersError}
+                      <strong>⚠️ Search Error:</strong> {ordersError}
                     </div>
                   </div>
                 )}

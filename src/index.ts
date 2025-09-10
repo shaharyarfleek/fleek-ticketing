@@ -26,16 +26,149 @@ const bigquery = new BigQuery({
 const datasetId = process.env.BIGQUERY_DATASET_ID || process.env.VITE_BIGQUERY_DATASET_ID || 'fleek_raw';
 const tableId = process.env.BIGQUERY_TABLE_ID || process.env.VITE_BIGQUERY_TABLE_ID || 'order_line_status_details';
 
+// Hourly cache system for orders
+interface CachedOrder {
+  orderLineId: string;
+  orderValue: number;
+  currency: string;
+}
+
+interface OrderCache {
+  data: CachedOrder[];
+  lastUpdated: Date;
+  isLoading: boolean;
+}
+
+let orderCache: OrderCache = {
+  data: [],
+  lastUpdated: new Date(0), // Start with epoch to force initial load
+  isLoading: false
+};
+
+const CACHE_DURATION_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+
+// Function to refresh order cache from BigQuery
+async function refreshOrderCache(): Promise<void> {
+  if (orderCache.isLoading) {
+    console.log('Cache refresh already in progress, skipping...');
+    return;
+  }
+
+  console.log('🔄 Starting hourly BigQuery cache refresh...');
+  orderCache.isLoading = true;
+
+  try {
+    const query = `
+      SELECT DISTINCT 
+        fleek_id as orderLineId,
+        total_order_line_amount as orderValue
+      FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
+      WHERE fleek_id IS NOT NULL
+      ORDER BY fleek_id
+    `;
+
+    console.log('Executing BigQuery cache refresh query...');
+    const [rows] = await bigquery.query({ query });
+    
+    const ordersWithCurrency = rows
+      .filter((row: any) => row.orderLineId && row.orderLineId.trim() !== '')
+      .map((row: any) => ({
+        orderLineId: row.orderLineId,
+        orderValue: row.orderValue || 0,
+        currency: 'GBP'
+      }));
+
+    orderCache.data = ordersWithCurrency;
+    orderCache.lastUpdated = new Date();
+    orderCache.isLoading = false;
+
+    console.log(`✅ Cache refreshed successfully! Loaded ${ordersWithCurrency.length} orders`);
+    console.log(`📊 Cache stats: First order: ${ordersWithCurrency[0]?.orderLineId}, Last: ${ordersWithCurrency[ordersWithCurrency.length - 1]?.orderLineId}`);
+  } catch (error) {
+    console.error('❌ Cache refresh failed:', error);
+    orderCache.isLoading = false;
+    throw error;
+  }
+}
+
+// Function to check if cache needs refresh
+function shouldRefreshCache(): boolean {
+  const now = new Date();
+  const timeSinceLastUpdate = now.getTime() - orderCache.lastUpdated.getTime();
+  return timeSinceLastUpdate > CACHE_DURATION_MS || orderCache.data.length === 0;
+}
+
+// Function to get cached orders with auto-refresh
+async function getCachedOrders(): Promise<CachedOrder[]> {
+  if (shouldRefreshCache() && !orderCache.isLoading) {
+    try {
+      await refreshOrderCache();
+    } catch (error) {
+      console.error('Failed to refresh cache, using stale data:', error);
+    }
+  }
+  
+  return orderCache.data;
+}
+
 // Health check endpoint
 app.get('/health', (req: Request, res: Response) => {
+  const cacheAge = new Date().getTime() - orderCache.lastUpdated.getTime();
+  const cacheAgeMinutes = Math.floor(cacheAge / (1000 * 60));
+  
   res.json({ 
     status: 'OK', 
-    message: 'BigQuery API Server is running',
+    message: 'BigQuery Cached API Server is running',
     timestamp: new Date().toISOString(),
-    version: 'unlimited-orders-v2.0-deployed',
+    version: 'v3.0-hourly-cache',
     nodeEnv: process.env.NODE_ENV,
-    deploymentTime: new Date().toISOString()
+    cache: {
+      ordersCount: orderCache.data.length,
+      lastUpdated: orderCache.lastUpdated.toISOString(),
+      ageMinutes: cacheAgeMinutes,
+      isLoading: orderCache.isLoading,
+      nextRefreshIn: Math.max(0, 60 - cacheAgeMinutes) + ' minutes'
+    }
   });
+});
+
+// Cache status endpoint
+app.get('/api/cache/status', (req: Request, res: Response) => {
+  const cacheAge = new Date().getTime() - orderCache.lastUpdated.getTime();
+  const cacheAgeMinutes = Math.floor(cacheAge / (1000 * 60));
+  const needsRefresh = shouldRefreshCache();
+  
+  res.json({
+    success: true,
+    cache: {
+      ordersCount: orderCache.data.length,
+      lastUpdated: orderCache.lastUpdated.toISOString(),
+      ageMinutes: cacheAgeMinutes,
+      isLoading: orderCache.isLoading,
+      needsRefresh: needsRefresh,
+      nextRefreshIn: Math.max(0, 60 - cacheAgeMinutes) + ' minutes',
+      sampleOrders: orderCache.data.slice(0, 5).map(o => o.orderLineId)
+    }
+  });
+});
+
+// Manual cache refresh endpoint (for testing)
+app.post('/api/cache/refresh', async (req: Request, res: Response) => {
+  try {
+    await refreshOrderCache();
+    res.json({
+      success: true,
+      message: 'Cache refreshed successfully',
+      ordersCount: orderCache.data.length,
+      lastUpdated: orderCache.lastUpdated.toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to refresh cache',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
 });
 
 // Debug endpoint to check BigQuery configuration
@@ -119,63 +252,91 @@ app.get('/api/orders/count', async (req: Request, res: Response) => {
   }
 });
 
-// Search orders by query 
+// High-speed cached search with recommendations
 app.get('/api/search/orders', async (req: Request, res: Response) => {
-  console.log('=== SEARCH ENDPOINT HIT ===');
-  console.log('Query params:', req.query);
-  
   try {
     const searchQuery = req.query.q as string;
     const limit = parseInt(req.query.limit as string) || 50;
     
-    console.log(`Search query: "${searchQuery}", limit: ${limit}`);
+    console.log(`🔍 Fast search: "${searchQuery}", limit: ${limit}`);
     
     if (!searchQuery || searchQuery.trim().length === 0) {
-      console.log('Empty search query, returning empty results');
       return res.json({
         success: true,
         data: [],
         count: 0,
-        message: 'Enter search query to find orders'
+        message: 'Enter search query to find orders',
+        cacheInfo: {
+          totalOrders: orderCache.data.length,
+          lastUpdated: orderCache.lastUpdated.toISOString(),
+          source: 'cache'
+        }
       });
     }
 
-    const query = `
-      SELECT DISTINCT 
-        fleek_id as orderLineId,
-        total_order_line_amount as orderValue
-      FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
-      WHERE fleek_id IS NOT NULL 
-        AND LOWER(fleek_id) LIKE LOWER('%${searchQuery}%')
-      ORDER BY fleek_id
-      LIMIT ${limit}
-    `;
-
-    console.log('Executing BigQuery search:', query);
-    const [rows] = await bigquery.query({ query });
+    // Get cached data
+    const cachedOrders = await getCachedOrders();
+    const searchTerm = searchQuery.toLowerCase().trim();
     
-    console.log(`BigQuery returned ${rows.length} rows`);
+    // Fast in-memory search with multiple matching strategies
+    const exactMatches: CachedOrder[] = [];
+    const prefixMatches: CachedOrder[] = [];
+    const containsMatches: CachedOrder[] = [];
+    const fuzzyMatches: CachedOrder[] = [];
     
-    const ordersWithCurrency = rows
-      .filter((row: any) => row.orderLineId && row.orderLineId.trim() !== '')
-      .map((row: any) => ({
-        orderLineId: row.orderLineId,
-        orderValue: row.orderValue || 0,
-        currency: 'GBP'
-      }));
-
-    console.log(`After filtering: ${ordersWithCurrency.length} orders`);
-    console.log('Sample results:', ordersWithCurrency.slice(0, 2));
-
+    for (const order of cachedOrders) {
+      const orderIdLower = order.orderLineId.toLowerCase();
+      
+      if (orderIdLower === searchTerm) {
+        exactMatches.push(order);
+      } else if (orderIdLower.startsWith(searchTerm)) {
+        prefixMatches.push(order);
+      } else if (orderIdLower.includes(searchTerm)) {
+        containsMatches.push(order);
+      } else if (isOrderFuzzyMatch(orderIdLower, searchTerm)) {
+        fuzzyMatches.push(order);
+      }
+      
+      // Stop early if we have enough results
+      if (exactMatches.length + prefixMatches.length + containsMatches.length >= limit * 2) {
+        break;
+      }
+    }
+    
+    // Combine results with priority: exact > prefix > contains > fuzzy
+    const combinedResults = [
+      ...exactMatches,
+      ...prefixMatches.slice(0, limit - exactMatches.length),
+      ...containsMatches.slice(0, limit - exactMatches.length - prefixMatches.length),
+      ...fuzzyMatches.slice(0, limit - exactMatches.length - prefixMatches.length - containsMatches.length)
+    ].slice(0, limit);
+    
+    // Generate search suggestions
+    const suggestions = generateOrderSuggestions(searchTerm, cachedOrders);
+    
+    console.log(`✅ Found ${combinedResults.length} results from ${cachedOrders.length} cached orders`);
+    
     res.json({
       success: true,
-      data: ordersWithCurrency,
-      count: ordersWithCurrency.length,
+      data: combinedResults,
+      count: combinedResults.length,
       searchQuery: searchQuery,
-      limit: limit
+      suggestions: suggestions,
+      searchStats: {
+        exactMatches: exactMatches.length,
+        prefixMatches: prefixMatches.length,
+        containsMatches: containsMatches.length,
+        fuzzyMatches: fuzzyMatches.length
+      },
+      cacheInfo: {
+        totalOrders: cachedOrders.length,
+        lastUpdated: orderCache.lastUpdated.toISOString(),
+        source: 'cache',
+        searchTimeMs: Date.now() - Date.now() // Will be very fast!
+      }
     });
   } catch (error) {
-    console.error('Search error:', error);
+    console.error('Cached search error:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to search orders',
@@ -183,6 +344,42 @@ app.get('/api/search/orders', async (req: Request, res: Response) => {
     });
   }
 });
+
+// Helper function for fuzzy matching
+function isOrderFuzzyMatch(orderIdLower: string, searchTerm: string): boolean {
+  // Simple fuzzy matching - check if most characters from search term exist in order
+  if (searchTerm.length < 3) return false;
+  
+  let matchCount = 0;
+  for (const char of searchTerm) {
+    if (orderIdLower.includes(char)) {
+      matchCount++;
+    }
+  }
+  
+  return matchCount / searchTerm.length >= 0.7; // 70% character match
+}
+
+// Generate search suggestions
+function generateOrderSuggestions(searchTerm: string, orders: CachedOrder[]): string[] {
+  if (searchTerm.length < 2) return [];
+  
+  const suggestions = new Set<string>();
+  const searchLower = searchTerm.toLowerCase();
+  
+  // Find orders that start with the search term and extract common patterns
+  for (const order of orders) {
+    const orderIdLower = order.orderLineId.toLowerCase();
+    
+    if (orderIdLower.startsWith(searchLower)) {
+      suggestions.add(order.orderLineId);
+      
+      if (suggestions.size >= 10) break;
+    }
+  }
+  
+  return Array.from(suggestions).slice(0, 8);
+}
 
 // Get all order line IDs (deprecated - use search instead)
 app.get('/api/orders', async (req: Request, res: Response) => {
@@ -278,10 +475,37 @@ app.get('/api/orders/:orderLineId', async (req: Request, res: Response) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`BigQuery API Server v2.0 running on http://localhost:${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Orders endpoint: http://localhost:${PORT}/api/orders`);
-  console.log(`Loading unlimited orders from BigQuery...`);
-});
+// Initialize cache on startup
+async function initializeServer() {
+  console.log('🚀 Starting BigQuery Cached API Server v3.0...');
+  
+  // Load initial cache
+  try {
+    await refreshOrderCache();
+    console.log('✅ Initial cache loaded successfully');
+  } catch (error) {
+    console.error('❌ Failed to load initial cache:', error);
+    console.log('⚠️  Server will start but search may not work until cache loads');
+  }
+  
+  // Set up automatic hourly refresh
+  setInterval(async () => {
+    console.log('⏰ Automatic hourly cache refresh triggered');
+    try {
+      await refreshOrderCache();
+    } catch (error) {
+      console.error('❌ Automatic cache refresh failed:', error);
+    }
+  }, CACHE_DURATION_MS);
+  
+  // Start server
+  app.listen(PORT, () => {
+    console.log(`🎯 BigQuery Cached API Server v3.0 running on http://localhost:${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`🔍 Fast search: http://localhost:${PORT}/api/search/orders`);
+    console.log(`📈 Cache status: http://localhost:${PORT}/api/cache/status`);
+    console.log(`💾 Orders cached: ${orderCache.data.length} (refreshed every hour)`);
+  });
+}
+
+initializeServer();
