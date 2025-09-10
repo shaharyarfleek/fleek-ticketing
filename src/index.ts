@@ -140,20 +140,16 @@ app.get('/api/orders/search', async (req: Request, res: Response) => {
         total_order_line_amount as orderValue
       FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
       WHERE fleek_id IS NOT NULL 
-        AND LOWER(fleek_id) LIKE LOWER(@searchQuery)
+        AND LOWER(fleek_id) LIKE LOWER('%${searchQuery}%')
       ORDER BY fleek_id
-      LIMIT @limit
+      LIMIT ${limit}
     `;
 
     const options = {
-      query,
-      params: { 
-        searchQuery: `%${searchQuery}%`,
-        limit: limit 
-      }
+      query
     };
 
-    console.log('Executing search query:', query, 'with params:', options.params);
+    console.log('Executing search query:', query);
     const [rows] = await bigquery.query(options);
     
     console.log(`BigQuery returned ${rows.length} rows for search: "${searchQuery}"`);
