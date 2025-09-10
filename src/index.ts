@@ -32,7 +32,9 @@ app.get('/health', (req: Request, res: Response) => {
     status: 'OK', 
     message: 'BigQuery API Server is running',
     timestamp: new Date().toISOString(),
-    version: 'unlimited-orders-v2.0-deployed'
+    version: 'unlimited-orders-v2.0-deployed',
+    nodeEnv: process.env.NODE_ENV,
+    deploymentTime: new Date().toISOString()
   });
 });
 
@@ -70,6 +72,25 @@ app.get('/debug', (req: Request, res: Response) => {
       }
     });
   }
+});
+
+// Test endpoint to show current query
+app.get('/api/query-test', (req: Request, res: Response) => {
+  const query = `
+    SELECT DISTINCT 
+      fleek_id as orderLineId,
+      total_order_line_amount as orderValue
+    FROM \`${process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID}.${datasetId}.${tableId}\`
+    WHERE fleek_id IS NOT NULL
+    ORDER BY fleek_id
+  `;
+  
+  res.json({
+    currentQuery: query,
+    hasLimit: query.includes('LIMIT'),
+    projectId: process.env.BIGQUERY_PROJECT_ID || process.env.VITE_BIGQUERY_PROJECT_ID,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Get count of orders
