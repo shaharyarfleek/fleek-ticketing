@@ -31,7 +31,7 @@ const currencies: Currency[] = ['GBP', 'USD', 'EUR', 'CAD', 'AUD', 'JPY', 'CNY',
 
 export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const { authState } = useAuth();
-  const { orders, suggestions, loading: ordersLoading, error: ordersError, searchStats, cacheInfo, searchOrders, clearSearch } = useOrderSearch();
+  const { orders, suggestions, loading: ordersLoading, error: ordersError, searchStats, cacheInfo, searchOrders, searchOrdersImmediate, clearSearch, isTyping } = useOrderSearch();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -262,17 +262,14 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
     clearSearch();
   };
 
-  const handleOrderNumberSearchChange = async (value: string) => {
+  const handleOrderNumberSearchChange = (value: string) => {
+    // Update UI immediately - no blocking!
     setOrderNumberSearch(value);
     setOrderNumber(value);
     setShowOrderNumberDropdown(true);
     
-    // Search for orders if user has typed at least 2 characters
-    if (value.trim().length >= 2) {
-      await searchOrders(value.trim());
-    } else {
-      clearSearch();
-    }
+    // Trigger non-blocking debounced search
+    searchOrders(value.trim());
   };
 
   // Check if order fields should be shown
@@ -494,11 +491,23 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                   
                   {showOrderNumberDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                      {ordersLoading && (
+                      {isTyping && (
+                        <div className="px-4 py-3 text-gray-500 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="flex gap-1">
+                              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                            </div>
+                            <span className="text-sm">Typing...</span>
+                          </div>
+                        </div>
+                      )}
+                      {!isTyping && ordersLoading && (
                         <div className="px-4 py-3 text-gray-500 text-center">
                           <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-1" />
-                          <div className="text-sm">Loading orders from BigQuery...</div>
-                          <div className="text-xs text-gray-400 mt-1">This may take up to 30 seconds</div>
+                          <div className="text-sm">Searching cached orders...</div>
+                          <div className="text-xs text-gray-400 mt-1">Lightning fast results</div>
                         </div>
                       )}
                       {ordersError && (
@@ -552,12 +561,12 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   🚀 Fast cached search • 
-                  {ordersLoading ? '⏳ Searching...' : orders.length > 0 ? `📋 ${orders.length} matches found` : 'Type 2+ characters to search'}
+                  {isTyping ? '⌨️ Typing...' : ordersLoading ? '⏳ Searching...' : orders.length > 0 ? `📋 ${orders.length} matches found` : 'Type 2+ characters to search'}
                   {cacheInfo && ` • 💾 ${cacheInfo.totalOrders?.toLocaleString()} orders cached`}
                 </p>
                 
-                {/* Search Suggestions */}
-                {!ordersLoading && suggestions.length > 0 && orderNumberSearch.length >= 2 && (
+                {/* Search Suggestions - only show when not typing */}
+                {!isTyping && !ordersLoading && suggestions.length > 0 && orderNumberSearch.length >= 2 && (
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="text-xs font-medium text-blue-700 mb-2">💡 Quick Suggestions:</div>
                     <div className="flex flex-wrap gap-1">
@@ -565,9 +574,11 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                         <button
                           key={index}
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             setOrderNumberSearch(suggestion);
                             setOrderNumber(suggestion);
+                            // Use immediate search for suggestion clicks
+                            await searchOrdersImmediate(suggestion);
                             handleOrderSelect(suggestion);
                             setShowOrderNumberDropdown(false);
                           }}
