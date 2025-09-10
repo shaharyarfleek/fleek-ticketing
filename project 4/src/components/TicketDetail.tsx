@@ -7,6 +7,7 @@ import { FileUpload, AttachmentList } from './FileUpload';
 import { CommentThread } from './CommentThread';
 import { ReminderModal } from './ReminderModal';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import { 
   ArrowLeft,
   MessageSquare,
@@ -29,38 +30,39 @@ import {
 interface TicketDetailProps {
   ticket: Ticket;
   onBack: () => void;
-  onStatusChange: (ticketId: string, status: TicketStatus) => void;
-  onAddComment: (ticketId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => void;
-  onAssigneeChange: (ticketId: string, assignee: User | null) => void;
-  onAddReply?: (commentId: string, reply: Omit<Reply, 'id' | 'createdAt'>) => void;
-  onSetReminder?: (reminder: Omit<Reminder, 'id' | 'createdAt'>) => void;
 }
 
 export const TicketDetail: React.FC<TicketDetailProps> = ({ 
   ticket, 
-  onBack, 
-  onStatusChange,
-  onAddComment,
-  onAssigneeChange,
-  onAddReply,
-  onSetReminder
+  onBack
 }) => {
+  const { updateTicket, addComment, addReply, setReminder } = useData();
   const { authState } = useAuth();
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(true);
   const [commentAttachments, setCommentAttachments] = useState<Attachment[]>([]);
   const [showReminderModal, setShowReminderModal] = useState(false);
 
-  const currentUser = authState.user || { id: 'admin-1', name: 'Admin', email: 'admin@fleek.com', department: departments[0], role: 'admin' };
+  const currentUser = authState.user || { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Admin', email: 'admin@fleek.com', department: departments[0], role: 'admin' };
   const users = authState.getAllUsers ? authState.getAllUsers() : [];
 
-  const handleStatusChange = (newStatus: TicketStatus) => {
-    onStatusChange(ticket.id, newStatus);
+  const handleStatusChange = async (newStatus: TicketStatus) => {
+    try {
+      await updateTicket(ticket.id, { status: newStatus });
+      console.log('✅ Ticket status updated:', newStatus);
+    } catch (error) {
+      console.error('❌ Failed to update ticket status:', error);
+    }
   };
 
-  const handleAssigneeChange = (userId: string) => {
-    const user = userId ? users.find(u => u.id === userId) || null : null;
-    onAssigneeChange(ticket.id, user);
+  const handleAssigneeChange = async (userId: string) => {
+    try {
+      const user = userId ? users.find(u => u.id === userId) || null : null;
+      await updateTicket(ticket.id, { assignee: user });
+      console.log('✅ Ticket assignee updated:', user?.name || 'Unassigned');
+    } catch (error) {
+      console.error('❌ Failed to update ticket assignee:', error);
+    }
   };
 
   const handleFilesSelected = (files: File[]) => {
@@ -82,36 +84,58 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
     setCommentAttachments(prev => prev.filter(att => att.id !== attachmentId));
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (newComment.trim() || commentAttachments.length > 0) {
-      onAddComment(ticket.id, {
-        content: newComment,
-        author: currentUser,
-        isInternal,
-        type: 'comment',
-        attachments: commentAttachments,
-        replies: []
-      });
-      setNewComment('');
-      setCommentAttachments([]);
+      try {
+        const comment: Comment = {
+          id: `comment-${Date.now()}`,
+          content: newComment,
+          author: currentUser,
+          isInternal,
+          type: 'comment',
+          attachments: commentAttachments,
+          replies: [],
+          createdAt: new Date()
+        };
+        
+        await addComment(ticket.id, comment);
+        setNewComment('');
+        setCommentAttachments([]);
+        console.log('✅ Comment added successfully');
+      } catch (error) {
+        console.error('❌ Failed to add comment:', error);
+      }
     }
   };
 
-  const handleMarkAsSolved = () => {
+  const handleMarkAsSolved = async () => {
     // Access control: Only reporter or assignee can mark as solved
     if (currentUser.id === ticket.reporter.id || 
         (ticket.assignee && currentUser.id === ticket.assignee.id)) {
-      onStatusChange(ticket.id, 'resolved');
-      // Auto-close window after marking as solved
-      setTimeout(() => {
-        onBack();
-      }, 1500); // 1.5 second delay to show the status change
+      try {
+        await updateTicket(ticket.id, { status: 'resolved' });
+        console.log('✅ Ticket marked as solved');
+        // Auto-close window after marking as solved
+        setTimeout(() => {
+          onBack();
+        }, 1500); // 1.5 second delay to show the status change
+      } catch (error) {
+        console.error('❌ Failed to mark ticket as solved:', error);
+      }
     }
   };
 
-  const handleSetReminder = (reminder: Omit<Reminder, 'id' | 'createdAt'>) => {
-    if (onSetReminder) {
-      onSetReminder(reminder);
+  const handleSetReminder = async (reminderData: Omit<Reminder, 'id' | 'createdAt'>) => {
+    try {
+      const reminder: Reminder = {
+        id: `reminder-${Date.now()}`,
+        createdAt: new Date(),
+        ...reminderData
+      };
+      await setReminder(ticket.id, reminder);
+      console.log('✅ Reminder set successfully');
+    } catch (error) {
+      console.error('❌ Failed to set reminder:', error);
     }
   };
 

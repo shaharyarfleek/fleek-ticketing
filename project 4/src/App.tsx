@@ -1,6 +1,7 @@
 // World-class UI Update - Deployed on 2025-08-29
 import React, { useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
+import { DataProvider } from './contexts/DataContext';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { getAutoAssignedUser } from './data/mockData';
@@ -16,14 +17,13 @@ import { departments } from './data/mockData';
 function AppContent() {
   const [currentView, setCurrentView] = useState<'tickets' | 'orders' | 'analytics' | 'settings'>('tickets');
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleTicketSelect = (ticket: Ticket) => {
     setSelectedTicket(ticket);
   };
 
-  const handleTicketSelectById = (ticketId: string) => {
+  const handleTicketSelectById = (ticketId: string, tickets: Ticket[]) => {
     const ticket = tickets.find(t => t.id === ticketId);
     if (ticket) {
       setSelectedTicket(ticket);
@@ -34,148 +34,8 @@ function AppContent() {
     setSelectedTicket(null);
   };
 
-  const handleStatusChange = (ticketId: string, newStatus: TicketStatus) => {
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => 
-        ticket.id === ticketId 
-          ? { ...ticket, status: newStatus, updatedAt: new Date() }
-          : ticket
-      )
-    );
-    
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket(prev => prev ? { ...prev, status: newStatus, updatedAt: new Date() } : null);
-    }
-  };
-
-  const handleAssigneeChange = (ticketId: string, assignee: User | null) => {
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => 
-        ticket.id === ticketId 
-          ? { ...ticket, assignee, updatedAt: new Date() }
-          : ticket
-      )
-    );
-    
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket(prev => prev ? { ...prev, assignee, updatedAt: new Date() } : null);
-    }
-  };
-
-  const handleAddComment = (ticketId: string, comment: Omit<Comment, 'id' | 'createdAt'>) => {
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      ...comment
-    };
-
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => 
-        ticket.id === ticketId 
-          ? { ...ticket, comments: [...ticket.comments, newComment], updatedAt: new Date() }
-          : ticket
-      )
-    );
-
-    if (selectedTicket && selectedTicket.id === ticketId) {
-      setSelectedTicket(prev => prev ? { 
-        ...prev, 
-        comments: [...prev.comments, newComment], 
-        updatedAt: new Date() 
-      } : null);
-    }
-  };
-
-  const handleAddReply = (commentId: string, reply: Omit<Reply, 'id' | 'createdAt'>) => {
-    const newReply: Reply = {
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      ...reply
-    };
-
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => ({
-        ...ticket,
-        comments: ticket.comments.map(comment =>
-          comment.id === commentId
-            ? { ...comment, replies: [...(comment.replies || []), newReply] }
-            : comment
-        ),
-        updatedAt: new Date()
-      }))
-    );
-
-    if (selectedTicket) {
-      setSelectedTicket(prev => prev ? {
-        ...prev,
-        comments: prev.comments.map(comment =>
-          comment.id === commentId
-            ? { ...comment, replies: [...(comment.replies || []), newReply] }
-            : comment
-        ),
-        updatedAt: new Date()
-      } : null);
-    }
-  };
-
-  const handleSetReminder = (reminder: Omit<Reminder, 'id' | 'createdAt'>) => {
-    const newReminder: Reminder = {
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      ...reminder
-    };
-
-    setTickets(prevTickets => 
-      prevTickets.map(ticket => 
-        ticket.id === reminder.ticketId 
-          ? { ...ticket, reminder: newReminder, updatedAt: new Date() }
-          : ticket
-      )
-    );
-
-    if (selectedTicket && selectedTicket.id === reminder.ticketId) {
-      setSelectedTicket(prev => prev ? { ...prev, reminder: newReminder, updatedAt: new Date() } : null);
-    }
-  };
-
-  const handleCreateTicket = (ticketData: any) => {
-    const newTicket: Ticket = {
-      id: `TK-2024-${String(tickets.length + 1).padStart(3, '0')}`,
-      title: ticketData.title,
-      description: ticketData.description,
-      status: 'new',
-      priority: ticketData.priority,
-      department: ticketData.department,
-      assignee: ticketData.assignee || null,
-      reporter: { id: 'admin-1', name: 'System Administrator', email: 'admin@fleek.com', department: departments[0], role: 'admin' }, // Admin as reporter
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      tags: ticketData.tags,
-      comments: [],
-      dueDate: ticketData.dueDate,
-      attachments: ticketData.attachments || [],
-      issueType: ticketData.issueType,
-      orderNumber: ticketData.orderNumber,
-      orderValue: ticketData.orderValue,
-      refundValue: ticketData.refundValue,
-      currency: ticketData.currency,
-      issueCategory: ticketData.issueCategory,
-      slaHours: ticketData.slaHours,
-      pocName: ticketData.pocName,
-      escalationLevel: 'none',
-      businessImpact: 'medium',
-      resolutionTime: undefined,
-      firstResponseTime: undefined,
-      watchers: [],
-      linkedTickets: [],
-      customFields: {},
-      automationRules: [],
-      slaBreaches: [],
-      worklog: [],
-    };
-
-    setTickets(prevTickets => [newTicket, ...prevTickets]);
-  };
+  // These handlers will be passed down to components that use DataContext
+  // They now just update the selectedTicket state for UI purposes
 
   const renderContent = () => {
     if (currentView === 'orders') {
@@ -195,11 +55,6 @@ function AppContent() {
         <TicketDetail
           ticket={selectedTicket}
           onBack={handleBackToList}
-          onStatusChange={handleStatusChange}
-          onAddComment={handleAddComment}
-          onAssigneeChange={handleAssigneeChange}
-          onAddReply={handleAddReply}
-          onSetReminder={handleSetReminder}
         />
       );
     }
@@ -208,8 +63,6 @@ function AppContent() {
       <TicketList
         onTicketSelect={handleTicketSelect}
         selectedTicketId={selectedTicket?.id}
-        tickets={tickets}
-        onCreateTicket={handleCreateTicket}
         searchQuery={searchQuery}
       />
     );
@@ -219,7 +72,6 @@ function AppContent() {
     <Layout 
       currentView={currentView} 
       onViewChange={setCurrentView}
-      onTicketSelect={handleTicketSelectById}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
     >
@@ -232,9 +84,11 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <ProtectedRoute>
-          <AppContent />
-        </ProtectedRoute>
+        <DataProvider>
+          <ProtectedRoute>
+            <AppContent />
+          </ProtectedRoute>
+        </DataProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

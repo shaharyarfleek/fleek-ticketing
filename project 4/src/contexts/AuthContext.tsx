@@ -4,7 +4,7 @@ import { departments } from '../data/mockData';
 
 // Only admin user - will be created if doesn't exist
 const createAdminUser = (): AuthUser => ({
-  id: 'admin-1',
+  id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // UUID matching Supabase user
   username: 'admin',
   email: 'admin@fleek.com',
   name: 'System Administrator',

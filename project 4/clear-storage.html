@@ -1,0 +1,19 @@
+<\!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Storage</title>
+</head>
+<body>
+    <h1>Clear LocalStorage for Fleek Ticketing</h1>
+    <button onclick="clearStorage()">Clear Storage and Reload</button>
+    <script>
+        function clearStorage() {
+            // Clear all localStorage
+            localStorage.clear();
+            alert('Storage cleared\! Redirecting to app...');
+            window.location.href = 'http://localhost:5173/';
+        }
+    </script>
+</body>
+</html>
+EOF < /dev/null

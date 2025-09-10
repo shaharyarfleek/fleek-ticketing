@@ -157,12 +157,13 @@ export interface User {
   avatar?: string;
   department: Department;
   role: UserRole;
-  timezone: string;
-  workingHours: WorkingHours;
-  skills: string[];
-  maxConcurrentTickets: number;
-  isOnline: boolean;
-  lastSeen: Date;
+  timezone?: string;
+  workingHours?: WorkingHours;
+  skills?: string[];
+  maxConcurrentTickets?: number;
+  isOnline?: boolean;
+  lastSeen?: Date;
+  isBlocked?: boolean;
 }
 
 export interface WorkingHours {
@@ -180,12 +181,12 @@ export interface Department {
   name: string;
   color: string;
   description: string;
-  slaHours: number;
-  escalationMatrix: EscalationMatrix;
-  issueCategories: IssueCategory[];
-  automationRules: string[];
-  workingHours: WorkingHours;
-  holidayCalendar: string[];
+  slaHours?: number;
+  escalationMatrix?: EscalationMatrix;
+  issueCategories?: IssueCategory[];
+  automationRules?: string[];
+  workingHours?: WorkingHours;
+  holidayCalendar?: string[];
 }
 
 export interface EscalationMatrix {
@@ -304,4 +305,43 @@ export interface ReportSchedule {
   time: string;
   timezone: string;
   enabled: boolean;
+}
+
+// Missing interfaces for comments, replies, and reminders
+export interface Comment {
+  id: string;
+  content: string;
+  author: User;
+  createdAt: Date;
+  isInternal?: boolean;
+  type?: 'comment' | 'status_change' | 'assignment';
+  attachments?: Attachment[];
+  replies?: Reply[];
+}
+
+export interface Reply {
+  id: string;
+  content: string;
+  author: User;
+  createdAt: Date;
+}
+
+export interface Reminder {
+  id: string;
+  ticketId: string;
+  userId: string;
+  message: string;
+  dueDate: Date;
+  createdAt: Date;
+  completed?: boolean;
+}
+
+export interface Attachment {
+  id: string;
+  filename: string;
+  url: string;
+  size: number;
+  mimeType: string;
+  uploadedAt: Date;
+  uploadedBy: User;
 }

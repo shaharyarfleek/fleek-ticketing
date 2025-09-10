@@ -141,7 +141,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
             file.type.startsWith('video/') ? 'video' : 'document',
       size: file.size,
       uploadedAt: new Date(),
-      uploadedBy: authState.user || { id: 'admin-1', name: 'Admin', email: 'admin@fits.com', department: departments[0], role: 'admin' }
+      uploadedBy: authState.user || { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Admin', email: 'admin@fits.com', department: departments[0], role: 'admin' }
     }));
 
     setAttachments(prev => [...prev, ...newAttachments]);

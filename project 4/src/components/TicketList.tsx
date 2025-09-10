@@ -6,6 +6,7 @@ import { NewTicketModal } from './NewTicketModal';
 import { BulkActionsBar } from './BulkActionsBar';
 import { AdvancedFilterPanel } from './AdvancedFilterPanel';
 import { TicketCard } from './TicketCard';
+import { useData } from '../contexts/DataContext';
 import { 
   Plus, 
   Filter,
@@ -33,18 +34,15 @@ import { useAuth } from '../contexts/AuthContext';
 interface TicketListProps {
   onTicketSelect: (ticket: Ticket) => void;
   selectedTicketId?: string;
-  tickets: Ticket[];
-  onCreateTicket: (ticket: any) => void;
   searchQuery?: string;
 }
 
 export const TicketList: React.FC<TicketListProps> = ({ 
   onTicketSelect, 
-  selectedTicketId, 
-  tickets,
-  onCreateTicket,
+  selectedTicketId,
   searchQuery = ''
 }) => {
+  const { tickets, addTicket, isLoading } = useData();
   const { authState } = useAuth();
   const currentUser = authState.user;
   const [filters, setFilters] = useState<AdvancedFilters>({});
@@ -56,6 +54,64 @@ export const TicketList: React.FC<TicketListProps> = ({
   const [selectedTickets, setSelectedTickets] = useState<string[]>([]);
   const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Handle creating new ticket with cloud storage
+  const handleCreateTicket = async (ticketData: any) => {
+    try {
+      const newTicket: Ticket = {
+        id: `TK-2024-${String(tickets.length + 1).padStart(3, '0')}`,
+        title: ticketData.title,
+        description: ticketData.description,
+        status: 'new',
+        priority: ticketData.priority,
+        severity: 'medium',
+        department: ticketData.department,
+        assignee: ticketData.assignee || null,
+        reporter: currentUser || { 
+          id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // Default admin UUID
+          name: 'System Administrator', 
+          email: 'admin@fleek.com', 
+          department: departments[0], 
+          role: 'admin',
+          isBlocked: false
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        resolvedAt: undefined,
+        firstResponseAt: undefined,
+        tags: ticketData.tags,
+        comments: [],
+        dueDate: ticketData.dueDate,
+        attachments: ticketData.attachments || [],
+        issueType: ticketData.issueType,
+        orderNumber: ticketData.orderNumber,
+        orderValue: ticketData.orderValue,
+        refundValue: ticketData.refundValue,
+        currency: ticketData.currency,
+        issueCategory: ticketData.issueCategory,
+        slaHours: ticketData.slaHours,
+        pocName: ticketData.pocName,
+        escalationLevel: 'none',
+        businessImpact: 'medium',
+        customerTier: undefined,
+        resolutionTime: undefined,
+        firstResponseTime: undefined,
+        watchers: [],
+        linkedTickets: [],
+        customFields: {},
+        automationRules: [],
+        slaBreaches: [],
+        worklog: [],
+      };
+
+      await addTicket(newTicket);
+      setShowNewTicketModal(false);
+      console.log('✅ Ticket created successfully:', newTicket.id);
+    } catch (error) {
+      console.error('❌ Failed to create ticket:', error);
+      // You could show an error message to the user here
+    }
+  };
 
   // Helper function for gradient classes
   const getGradientClasses = (color: string) => {
@@ -612,7 +668,7 @@ export const TicketList: React.FC<TicketListProps> = ({
         <NewTicketModal
           isOpen={showNewTicketModal}
           onClose={() => setShowNewTicketModal(false)}
-          onSubmit={onCreateTicket}
+          onSubmit={handleCreateTicket}
         />
       </div>
     </div>

@@ -18,7 +18,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
   onAddReply
 }) => {
   const { authState } = useAuth();
-  const currentUser = authState.user || { id: 'admin-1', name: 'Admin', email: 'admin@fleek.com', department: { id: '1', name: 'Finance' }, role: 'admin' };
+  const currentUser = authState.user || { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Admin', email: 'admin@fleek.com', department: { id: '1', name: 'Finance' }, role: 'admin' };
   const [showReplies, setShowReplies] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState(false);
   const [replyContent, setReplyContent] = useState('');
