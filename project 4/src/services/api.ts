@@ -19,21 +19,38 @@ class ApiService {
     const url = `${API_BASE_URL}${endpoint}`;
     
     try {
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,
         },
+        signal: controller.signal,
         ...options,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
       }
 
       return await response.json();
     } catch (error) {
       console.error(`API request failed for ${endpoint}:`, error);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timed out - please check your internet connection or try again later');
+        }
+        if (error.message.includes('Failed to fetch')) {
+          throw new Error('Unable to connect to server - please check if the backend is running');
+        }
+      }
+      
       throw error;
     }
   }
@@ -73,6 +90,15 @@ class ApiService {
       return await this.request<{ status: string; message: string }>('/health');
     } catch (error) {
       console.error('Health check failed:', error);
+      throw error;
+    }
+  }
+
+  async checkDebug(): Promise<any> {
+    try {
+      return await this.request<any>('/debug');
+    } catch (error) {
+      console.error('Debug check failed:', error);
       throw error;
     }
   }

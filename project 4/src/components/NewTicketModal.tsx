@@ -494,6 +494,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                         <div className="px-4 py-3 text-gray-500 text-center">
                           <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-1" />
                           <div className="text-sm">Loading orders from BigQuery...</div>
+                          <div className="text-xs text-gray-400 mt-1">This may take up to 30 seconds</div>
                         </div>
                       )}
                       {ordersError && (
