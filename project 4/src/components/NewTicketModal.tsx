@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, ChevronDown, Search, Package, DollarSign, Globe } from 'lucide-react';
+import { X, ChevronDown, Search, Package, DollarSign, Globe, RefreshCw } from 'lucide-react';
 import { departments } from '../data/mockData';
 import { Priority, Department, User, Attachment, IssueType, Currency } from '../types';
 import { FileUpload, AttachmentList } from './FileUpload';
 import { TagGenerator } from '../utils/tagGenerator';
 import { useAuth } from '../contexts/AuthContext';
+import { useOrders } from '../hooks/useOrders';
 
 interface NewTicketModalProps {
   isOpen: boolean;
@@ -30,6 +31,8 @@ const currencies: Currency[] = ['GBP', 'USD', 'EUR', 'CAD', 'AUD', 'JPY', 'CNY',
 
 export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const { authState } = useAuth();
+  const { orders, loading: ordersLoading, error: ordersError, refetch: refetchOrders } = useOrders();
+  
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
@@ -57,20 +60,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   const dropdownRef = useRef<HTMLDivElement>(null);
   const orderDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Mock order numbers for development
-  const mockOrders = [
-    'FL-2024-8834',
-    'FL-2024-7721', 
-    'FL-2024-6543',
-    'FL-2024-5432',
-    'FL-2024-3210',
-    'FL-2024-2109',
-    'FL-2024-1001',
-    'FL-2024-1002',
-    'FL-2024-1003',
-    'FL-2024-1004',
-    '62495'
-  ];
+  // Get unique order numbers from BigQuery data
+  const orderNumbers = orders.map(order => order.orderLineId);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -187,24 +178,15 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
     setOrderNumberSearch(orderNum);
     setShowOrderNumberDropdown(false);
 
-    // Auto-populate mock order details
-    const mockOrderDetails: Record<string, any> = {
-      'FL-2024-8834': { orderValue: 299.99, currency: 'GBP' },
-      'FL-2024-7721': { orderValue: 2450.00, currency: 'GBP' },
-      'FL-2024-6543': { orderValue: 1250.00, currency: 'GBP' },
-      'FL-2024-5432': { orderValue: 129.99, currency: 'GBP' },
-      'FL-2024-3210': { orderValue: 1250.00, currency: 'GBP' },
-      'FL-2024-2109': { orderValue: 159.99, currency: 'GBP' },
-      '62495': { orderValue: 1250.00, currency: 'GBP' }
-    };
-
-    const orderDetails = mockOrderDetails[orderNum];
-    if (orderDetails) {
-      if (orderDetails.orderValue && !orderValue) {
-        setOrderValue(orderDetails.orderValue.toString());
+    // Find the order details from BigQuery data
+    const selectedOrder = orders.find(order => order.orderLineId === orderNum);
+    if (selectedOrder) {
+      // Auto-populate order value and currency from BigQuery data
+      if (selectedOrder.orderValue && !orderValue) {
+        setOrderValue(selectedOrder.orderValue.toString());
       }
-      if (orderDetails.currency && currency === 'GBP') {
-        setCurrency(orderDetails.currency as Currency);
+      if (selectedOrder.currency) {
+        setCurrency(selectedOrder.currency as Currency);
       }
     }
   };
@@ -241,7 +223,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   );
 
   // Filter order numbers based on search
-  const filteredOrderNumbers = mockOrders.filter(orderNum =>
+  const filteredOrderNumbers = orderNumbers.filter(orderNum =>
     orderNum.toLowerCase().includes(orderNumberSearch.toLowerCase())
   );
 
@@ -467,9 +449,21 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Order Number - Searchable */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Package className="w-4 h-4 inline mr-1" />
-                  Order Number
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center justify-between">
+                  <span>
+                    <Package className="w-4 h-4 inline mr-1" />
+                    Order Number
+                  </span>
+                  {ordersError && (
+                    <button
+                      type="button"
+                      onClick={() => refetchOrders()}
+                      className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Retry
+                    </button>
+                  )}
                 </label>
                 <div className="relative" ref={orderDropdownRef}>
                   <div className="relative">
@@ -480,7 +474,8 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                       onChange={(e) => handleOrderNumberSearchChange(e.target.value)}
                       onFocus={() => setShowOrderNumberDropdown(true)}
                       className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Search or enter order number..."
+                      placeholder={ordersLoading ? "Loading orders..." : "Search or enter order number..."}
+                      disabled={ordersLoading}
                     />
                     {(orderNumber || orderNumberSearch) && (
                       <button
@@ -493,9 +488,27 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                     )}
                   </div>
                   
-                  {showOrderNumberDropdown && filteredOrderNumbers.length > 0 && (
+                  {showOrderNumberDropdown && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
-                      {filteredOrderNumbers.length === 0 && (
+                      {ordersLoading && (
+                        <div className="px-4 py-3 text-gray-500 text-center">
+                          <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-1" />
+                          <div className="text-sm">Loading orders from BigQuery...</div>
+                        </div>
+                      )}
+                      {ordersError && (
+                        <div className="px-4 py-3 text-red-500 text-center">
+                          <div className="text-sm">Error loading orders</div>
+                          <button
+                            type="button"
+                            onClick={() => refetchOrders()}
+                            className="text-xs text-blue-600 hover:text-blue-700 mt-1"
+                          >
+                            Click to retry
+                          </button>
+                        </div>
+                      )}
+                      {!ordersLoading && !ordersError && filteredOrderNumbers.length === 0 && (
                         <div className="px-4 py-2 text-gray-500 text-center">
                           <div className="text-sm">
                             <span>
@@ -504,7 +517,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                           </div>
                         </div>
                       )}
-                      {filteredOrderNumbers.map((orderNum) => (
+                      {!ordersLoading && !ordersError && filteredOrderNumbers.map((orderNum) => (
                         <button
                           key={orderNum}
                           type="button"
@@ -523,12 +536,17 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">🔍 Searchable field • 📋 Sample order numbers</p>
-                <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="text-xs text-blue-700">
-                    <strong>Development Mode:</strong> Using sample order numbers for demonstration.
+                <p className="text-xs text-gray-500 mt-1">
+                  🔍 Searchable field • 
+                  {ordersLoading ? '⏳ Loading from BigQuery...' : `📋 ${orderNumbers.length} orders available`}
+                </p>
+                {!ordersLoading && orderNumbers.length > 0 && (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-xs text-green-700">
+                      <strong>Connected to BigQuery:</strong> Live order data from your database.
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Order Value */}
