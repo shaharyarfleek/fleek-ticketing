@@ -3,6 +3,7 @@ import { LoginForm } from './LoginForm';
 import { SignupForm } from './SignupForm';
 import { ForgotPasswordForm } from './ForgotPasswordForm';
 import { TicketIcon, Sparkles, Shield, Zap, Users, BarChart3, Clock } from 'lucide-react';
+import { Logo, LogoText } from '../../config/logo';
 
 type AuthView = 'login' | 'signup' | 'forgot-password';
 
@@ -45,16 +46,16 @@ export const AuthPage: React.FC = () => {
               {/* Premium Logo */}
               <div className="flex items-center space-x-4 mb-8">
                 <div className="relative">
-                  <div className="w-14 h-14 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl flex items-center justify-center shadow-xl">
-                    <TicketIcon className="w-7 h-7 text-white" />
+                  <div className="w-14 h-14 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl flex items-center justify-center shadow-xl overflow-hidden">
+                    <Logo className="w-10 h-10" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full animate-pulse"></div>
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent tracking-tight">
-                    F.I.T.S
+                    {LogoText.full}
                   </h1>
-                  <p className="text-slate-500 font-medium">Fleek Internal Ticketing System</p>
+                  <p className="text-slate-500 font-medium">Internal Ticketing System</p>
                 </div>
               </div>
               

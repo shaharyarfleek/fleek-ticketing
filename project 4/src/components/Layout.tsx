@@ -28,6 +28,7 @@ import { QuickActions } from './QuickActions';
 import { CommandPalette } from './CommandPalette';
 import { Notification } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { Logo, LogoIcon, LogoText } from '../config/logo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -130,20 +131,20 @@ export const Layout: React.FC<LayoutProps> = ({
               {/* Premium Logo with Status Indicator */}
               <div className="flex items-center space-x-3 group cursor-pointer">
                 <div className="relative">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-105 ${
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:scale-105 overflow-hidden ${
                     isDarkMode 
                       ? 'bg-gradient-to-br from-slate-700 to-slate-800' 
                       : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'
                   }`}>
-                    <TicketIcon className="w-5 h-5 text-white" />
+                    <LogoIcon className="w-6 h-6" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-emerald-400 to-emerald-500 rounded-full animate-pulse"></div>
                 </div>
-                <div>
+                <div className="hidden md:block">
                   <h1 className={`text-lg font-bold tracking-tight transition-colors duration-200 ${
                     isDarkMode ? 'text-white' : 'bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 bg-clip-text text-transparent'
                   }`}>
-                    F.I.T.S
+                    {LogoText.full}
                   </h1>
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
