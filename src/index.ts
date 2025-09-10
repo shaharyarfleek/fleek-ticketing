@@ -31,7 +31,8 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ 
     status: 'OK', 
     message: 'BigQuery API Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    version: 'unlimited-orders-v1.0'
   });
 });
 
