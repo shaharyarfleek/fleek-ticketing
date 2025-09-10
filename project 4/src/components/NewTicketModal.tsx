@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useDeferredValue } from 'react';
 import { X, ChevronDown, Search, Package, DollarSign, Globe, RefreshCw } from 'lucide-react';
 import { departments } from '../data/mockData';
 import { Priority, Department, User, Attachment, IssueType, Currency } from '../types';
@@ -60,8 +60,12 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   const dropdownRef = useRef<HTMLDivElement>(null);
   const orderDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Use deferred values for search results (low priority updates)
+  const deferredOrders = useDeferredValue(orders);
+  const deferredSuggestions = useDeferredValue(suggestions);
+  
   // Get unique order numbers from search results
-  const orderNumbers = orders.map(order => order.orderLineId);
+  const orderNumbers = deferredOrders.map(order => order.orderLineId);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -263,13 +267,17 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   };
 
   const handleOrderNumberSearchChange = (value: string) => {
-    // Update UI immediately - no blocking!
+    // Critical: Update input value FIRST with highest priority
     setOrderNumberSearch(value);
     setOrderNumber(value);
+    
+    // Show dropdown immediately
     setShowOrderNumberDropdown(true);
     
-    // Trigger non-blocking debounced search
-    searchOrders(value.trim());
+    // Schedule search in background (completely non-blocking)
+    setTimeout(() => {
+      searchOrders(value.trim());
+    }, 0); // Next tick - doesn't block current render
   };
 
   // Check if order fields should be shown
@@ -566,11 +574,11 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                 </p>
                 
                 {/* Search Suggestions - only show when not typing */}
-                {!isTyping && !ordersLoading && suggestions.length > 0 && orderNumberSearch.length >= 2 && (
+                {!isTyping && !ordersLoading && deferredSuggestions.length > 0 && orderNumberSearch.length >= 2 && (
                   <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                     <div className="text-xs font-medium text-blue-700 mb-2">💡 Quick Suggestions:</div>
                     <div className="flex flex-wrap gap-1">
-                      {suggestions.slice(0, 6).map((suggestion, index) => (
+                      {deferredSuggestions.slice(0, 6).map((suggestion, index) => (
                         <button
                           key={index}
                           type="button"
