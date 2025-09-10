@@ -82,8 +82,8 @@ export const TicketCard: React.FC<TicketCardProps> = ({
   };
 
   const isTicketOverdue = isOverdue(ticket.dueDate);
-  const hasComments = ticket.comments.length > 0;
-  const hasAttachments = ticket.attachments.length > 0;
+  const hasComments = ticket.comments && ticket.comments?.length || 0 > 0;
+  const hasAttachments = ticket.attachments && ticket.attachments?.length || 0 > 0;
 
   if (viewMode === 'list') {
     return (
@@ -153,14 +153,14 @@ export const TicketCard: React.FC<TicketCardProps> = ({
               {hasComments && (
                 <div className="flex items-center space-x-1 text-slate-500">
                   <MessageSquare className="w-4 h-4" />
-                  <span>{ticket.comments.length}</span>
+                  <span>{ticket.comments?.length || 0}</span>
                 </div>
               )}
 
               {hasAttachments && (
                 <div className="flex items-center space-x-1 text-slate-500">
                   <Paperclip className="w-4 h-4" />
-                  <span>{ticket.attachments.length}</span>
+                  <span>{ticket.attachments?.length || 0}</span>
                 </div>
               )}
 
@@ -285,13 +285,13 @@ export const TicketCard: React.FC<TicketCardProps> = ({
             {hasComments && (
               <div className="flex items-center space-x-1 text-slate-500">
                 <MessageSquare className="w-4 h-4" />
-                <span className="text-sm">{ticket.comments.length}</span>
+                <span className="text-sm">{ticket.comments?.length || 0}</span>
               </div>
             )}
             {hasAttachments && (
               <div className="flex items-center space-x-1 text-slate-500">
                 <Paperclip className="w-4 h-4" />
-                <span className="text-sm">{ticket.attachments.length}</span>
+                <span className="text-sm">{ticket.attachments?.length || 0}</span>
               </div>
             )}
           </div>

@@ -410,7 +410,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           </div>
 
           {/* Attachments */}
-          {ticket.attachments.length > 0 && (
+          {ticket.attachments?.length || 0 > 0 && (
             <div>
               <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                 <Paperclip className="w-5 h-5 mr-2" />
@@ -442,7 +442,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
               Activity Timeline
             </h2>
             <div className="space-y-6">
-              {ticket.comments.length === 0 ? (
+              {ticket.comments?.length || 0 === 0 ? (
                 <div className="text-center py-12">
                   <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                   <p className="text-slate-500">No activity yet. Be the first to comment!</p>
@@ -466,7 +466,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                         </div>
                         <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-xl p-4">
                           <p className="text-slate-700 leading-relaxed">{renderMentions(comment.content)}</p>
-                          {comment.attachments && comment.attachments.length > 0 && (
+                          {comment.attachments && comment.attachments?.length > 0 && (
                             <div className="mt-4">
                               <AttachmentList attachments={comment.attachments} />
                             </div>

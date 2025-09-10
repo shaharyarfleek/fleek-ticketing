@@ -78,7 +78,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
     });
   };
 
-  if (replies.length === 0 && !showReplyForm) {
+  if (replies?.length || 0 === 0 && !showReplyForm) {
     return (
       <div className="ml-12 mt-2">
         <button
@@ -94,7 +94,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
 
   return (
     <div className="ml-12 mt-4 space-y-4">
-      {replies.length > 0 && (
+      {replies?.length || 0 > 0 && (
         <button
           onClick={() => setShowReplies(!showReplies)}
           className="text-sm text-gray-500 hover:text-gray-700 flex items-center space-x-1 transition-colors duration-200"
@@ -104,7 +104,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
           ) : (
             <ChevronDown className="w-4 h-4" />
           )}
-          <span>{replies.length} {replies.length === 1 ? 'reply' : 'replies'}</span>
+          <span>{replies?.length || 0} {replies?.length || 0 === 1 ? 'reply' : 'replies'}</span>
         </button>
       )}
 
@@ -127,7 +127,7 @@ export const CommentThread: React.FC<CommentThreadProps> = ({
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <p className="text-sm text-gray-700">{renderMentions(reply.content)}</p>
-                  {reply.attachments && reply.attachments.length > 0 && (
+                  {reply.attachments && reply.attachments?.length > 0 && (
                     <div className="mt-2">
                       <AttachmentList attachments={reply.attachments} />
                     </div>
