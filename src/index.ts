@@ -156,6 +156,8 @@ app.get('/api/orders/search', async (req: Request, res: Response) => {
     console.log('Executing search query:', query, 'with params:', options.params);
     const [rows] = await bigquery.query(options);
     
+    console.log(`BigQuery returned ${rows.length} rows for search: "${searchQuery}"`);
+    
     const ordersWithCurrency = rows
       .filter((row: any) => row.orderLineId && row.orderLineId.trim() !== '')
       .map((row: any) => ({
@@ -164,12 +166,15 @@ app.get('/api/orders/search', async (req: Request, res: Response) => {
         currency: 'GBP'
       }));
 
+    console.log(`After filtering: ${ordersWithCurrency.length} orders`);
+
     res.json({
       success: true,
       data: ordersWithCurrency,
       count: ordersWithCurrency.length,
       searchQuery: searchQuery,
-      limit: limit
+      limit: limit,
+      totalRawRows: rows.length
     });
   } catch (error) {
     console.error('Error searching orders:', error);
