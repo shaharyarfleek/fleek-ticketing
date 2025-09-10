@@ -64,7 +64,7 @@ class ApiService {
 
   async searchOrders(searchQuery: string, limit: number = 50): Promise<Order[]> {
     try {
-      const response = await this.request<ApiResponse<Order[]>>(`/api/orders/search?q=${encodeURIComponent(searchQuery)}&limit=${limit}`);
+      const response = await this.request<ApiResponse<Order[]>>(`/api/search/orders?q=${encodeURIComponent(searchQuery)}&limit=${limit}`);
       
       if (response.success && response.data) {
         return response.data;

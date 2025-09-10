@@ -119,8 +119,8 @@ app.get('/api/orders/count', async (req: Request, res: Response) => {
   }
 });
 
-// Search orders by query (MUST be before parameterized routes)
-app.get('/api/orders/search', async (req: Request, res: Response) => {
+// Search orders by query 
+app.get('/api/search/orders', async (req: Request, res: Response) => {
   console.log('=== SEARCH ENDPOINT HIT ===');
   console.log('Query params:', req.query);
   
