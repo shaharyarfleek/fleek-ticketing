@@ -70,6 +70,10 @@ export const MentionInput: React.FC<MentionInputProps> = ({
     
     if (mentionMatch) {
       console.log('🔧 Mention detected:', mentionMatch, 'Query:', mentionMatch[1]);
+      console.log('🔧 Available users:', users.length, 'Filtered users will be:', users.filter(user =>
+        user.name.toLowerCase().includes(mentionMatch[1].toLowerCase()) ||
+        user.email.toLowerCase().includes(mentionMatch[1].toLowerCase())
+      ).length);
       setShowMentions(true);
       setMentionQuery(mentionMatch[1]);
       setMentionPosition(cursorPosition - mentionMatch[0].length);
@@ -146,8 +150,10 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         rows={rows}
       />
       
-      {showMentions && filteredUsers.length > 0 && (
-        <div className="absolute z-10 bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+      {(() => {
+        console.log('🔧 Dropdown render check - showMentions:', showMentions, 'filteredUsers.length:', filteredUsers.length);
+        return showMentions && filteredUsers.length > 0 && (
+          <div className="absolute z-[9999] bg-white border-2 border-blue-300 rounded-lg shadow-2xl mt-1 max-h-48 overflow-y-auto w-full left-0 top-full">
           {filteredUsers.map((user, index) => (
             <button
               key={user.id}
@@ -169,7 +175,8 @@ export const MentionInput: React.FC<MentionInputProps> = ({
             </button>
           ))}
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 };
