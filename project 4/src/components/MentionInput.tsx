@@ -19,6 +19,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
 }) => {
   const { authState } = useAuth();
   const users = authState.getAllUsers ? authState.getAllUsers() : [];
+  console.log('🔧 MentionInput - Available users for mentions:', users.length, users.map(u => u.name));
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionPosition, setMentionPosition] = useState(0);
@@ -41,6 +42,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
     const mentionMatch = textBeforeCursor.match(/@(\w*)$/);
     
     if (mentionMatch) {
+      console.log('🔧 Mention detected:', mentionMatch, 'Query:', mentionMatch[1]);
       setShowMentions(true);
       setMentionQuery(mentionMatch[1]);
       setMentionPosition(cursorPosition - mentionMatch[0].length);

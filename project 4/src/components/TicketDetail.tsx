@@ -443,13 +443,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
               Activity Timeline
             </h2>
             <div className="space-y-6">
-              {ticket.comments?.length || 0 === 0 ? (
-                <div className="text-center py-12">
-                  <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                  <p className="text-slate-500">No activity yet. Be the first to comment!</p>
-                </div>
-              ) : (
-                ticket.comments.map((comment) => (
+              {(() => {
+                console.log('🔧 Rendering comments - Total:', ticket.comments?.length || 0, 'Comments:', ticket.comments);
+                return !ticket.comments || ticket.comments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500">No activity yet. Be the first to comment!</p>
+                  </div>
+                ) : (
+                  ticket.comments.map((comment) => (
                   <div key={comment.id}>
                     <div className="flex space-x-4">
                       <div className="w-10 h-10 bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -489,8 +491,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                       }}
                     />
                   </div>
-                ))
-              )}
+                  ))
+                );
+              })()}
             </div>
 
             {/* Add Comment */}
