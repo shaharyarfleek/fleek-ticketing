@@ -1,4 +1,4 @@
-// Fix universal permissions and mentions - Deployed 2025-01-12-15:30
+// CRITICAL FIX: Supabase mapping bug - Deployed 2025-01-12-16:15 - CLEAR CACHE
 import React, { useState } from 'react';
 import { AuthProvider } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';

@@ -93,6 +93,7 @@ class SupabaseService {
   }
 
   private mapPartialTicketToDatabaseTicket(ticket: Partial<Ticket>): Partial<DatabaseTicket> {
+    console.log('🔧 Using PARTIAL mapping for ticket update:', Object.keys(ticket));
     const dbTicket: Partial<DatabaseTicket> = {};
     
     // Only map fields that are actually provided in the update
