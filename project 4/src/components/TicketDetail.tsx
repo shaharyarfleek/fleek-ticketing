@@ -86,6 +86,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
   const handleAddComment = async () => {
     if (newComment.trim() || commentAttachments.length > 0) {
+      console.log('🔧 Attempting to add comment by user:', currentUser?.name, 'to ticket:', ticket.id);
       try {
         const comment: Comment = {
           id: `comment-${Date.now()}`,
@@ -104,20 +105,23 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
         console.log('✅ Comment added successfully');
       } catch (error) {
         console.error('❌ Failed to add comment:', error);
+        alert(`Failed to add comment: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   };
 
   const handleMarkAsSolved = async () => {
+    console.log('🔧 Attempting to mark ticket as solved:', ticket.id, 'by user:', currentUser?.name);
     try {
       await updateTicket(ticket.id, { status: 'resolved' });
-      console.log('✅ Ticket marked as solved');
+      console.log('✅ Ticket marked as solved successfully');
       // Auto-close window after marking as solved
       setTimeout(() => {
         onBack();
       }, 1500); // 1.5 second delay to show the status change
     } catch (error) {
       console.error('❌ Failed to mark ticket as solved:', error);
+      alert(`Failed to mark ticket as solved: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -137,6 +141,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
   const canMarkAsSolved = () => {
     // Allow anyone to mark tickets as resolved
+    console.log('🔧 CanMarkAsSolved check - Current user:', currentUser?.name, 'Ticket:', ticket.id);
     return true;
   };
 
