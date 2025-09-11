@@ -92,6 +92,48 @@ class SupabaseService {
     };
   }
 
+  private mapPartialTicketToDatabaseTicket(ticket: Partial<Ticket>): Partial<DatabaseTicket> {
+    const dbTicket: Partial<DatabaseTicket> = {};
+    
+    // Only map fields that are actually provided in the update
+    if (ticket.id !== undefined) dbTicket.id = ticket.id;
+    if (ticket.title !== undefined) dbTicket.title = ticket.title;
+    if (ticket.description !== undefined) dbTicket.description = ticket.description;
+    if (ticket.status !== undefined) dbTicket.status = ticket.status;
+    if (ticket.priority !== undefined) dbTicket.priority = ticket.priority;
+    if (ticket.department) {
+      dbTicket.department_id = ticket.department.id;
+      dbTicket.department_name = ticket.department.name;
+    }
+    if (ticket.assignee !== undefined) {
+      dbTicket.assignee_id = ticket.assignee?.id || null;
+      dbTicket.assignee_name = ticket.assignee?.name || null;
+      dbTicket.assignee_email = ticket.assignee?.email || null;
+    }
+    if (ticket.reporter) {
+      dbTicket.reporter_id = ticket.reporter.id;
+      dbTicket.reporter_name = ticket.reporter.name;
+      dbTicket.reporter_email = ticket.reporter.email;
+    }
+    if (ticket.dueDate !== undefined) dbTicket.due_date = ticket.dueDate?.toISOString() || null;
+    if (ticket.tags !== undefined) dbTicket.tags = ticket.tags || [];
+    if (ticket.issueType !== undefined) dbTicket.issue_type = ticket.issueType || 'general';
+    if (ticket.orderNumber !== undefined) dbTicket.order_number = ticket.orderNumber || null;
+    if (ticket.orderValue !== undefined) dbTicket.order_value = ticket.orderValue || null;
+    if (ticket.refundValue !== undefined) dbTicket.refund_value = ticket.refundValue || null;
+    if (ticket.currency !== undefined) dbTicket.currency = ticket.currency || null;
+    if (ticket.issueCategory !== undefined) dbTicket.issue_category = ticket.issueCategory || null;
+    if (ticket.slaHours !== undefined) dbTicket.sla_hours = ticket.slaHours || null;
+    if (ticket.pocName !== undefined) dbTicket.poc_name = ticket.pocName || null;
+    if (ticket.escalationLevel !== undefined) dbTicket.escalation_level = ticket.escalationLevel || 'none';
+    if (ticket.businessImpact !== undefined) dbTicket.business_impact = ticket.businessImpact || 'medium';
+    if (ticket.watchers !== undefined) dbTicket.watchers = ticket.watchers || [];
+    if (ticket.linkedTickets !== undefined) dbTicket.linked_tickets = ticket.linkedTickets || [];
+    if (ticket.customFields !== undefined) dbTicket.custom_fields = ticket.customFields || {};
+    
+    return dbTicket;
+  }
+
   private mapDatabaseUserToUser(dbUser: DatabaseUser): User {
     return {
       id: dbUser.id,
@@ -166,7 +208,7 @@ class SupabaseService {
     const { error } = await supabase
       .from(TABLES.TICKETS)
       .update({
-        ...this.mapTicketToDatabaseTicket(updates as Ticket),
+        ...this.mapPartialTicketToDatabaseTicket(updates),
         updated_at: new Date().toISOString()
       })
       .eq('id', ticketId);
