@@ -109,19 +109,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   };
 
   const handleMarkAsSolved = async () => {
-    // Access control: Only reporter or assignee can mark as solved
-    if (currentUser.id === ticket.reporter.id || 
-        (ticket.assignee && currentUser.id === ticket.assignee.id)) {
-      try {
-        await updateTicket(ticket.id, { status: 'resolved' });
-        console.log('✅ Ticket marked as solved');
-        // Auto-close window after marking as solved
-        setTimeout(() => {
-          onBack();
-        }, 1500); // 1.5 second delay to show the status change
-      } catch (error) {
-        console.error('❌ Failed to mark ticket as solved:', error);
-      }
+    try {
+      await updateTicket(ticket.id, { status: 'resolved' });
+      console.log('✅ Ticket marked as solved');
+      // Auto-close window after marking as solved
+      setTimeout(() => {
+        onBack();
+      }, 1500); // 1.5 second delay to show the status change
+    } catch (error) {
+      console.error('❌ Failed to mark ticket as solved:', error);
     }
   };
 
@@ -140,8 +136,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   };
 
   const canMarkAsSolved = () => {
-    return currentUser.id === ticket.reporter.id || 
-           (ticket.assignee && ticket.assignee.id === currentUser.id);
+    // Allow anyone to mark tickets as resolved
+    return true;
   };
 
   const canSetReminder = () => {
