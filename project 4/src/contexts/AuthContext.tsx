@@ -482,6 +482,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }),
   };
 
+  // Debug log to verify getAllUsers is in the value object
+  console.log('🔧 AuthContext value object - getAllUsers present:', !!value.getAllUsers);
+
   return (
     <AuthContext.Provider value={value}>
       {children}
