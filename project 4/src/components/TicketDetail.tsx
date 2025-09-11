@@ -472,13 +472,17 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                     </div>
                     
                     {/* Comment Thread */}
-                    {onAddReply && (
-                      <CommentThread
-                        commentId={comment.id}
-                        replies={comment.replies || []}
-                        onAddReply={onAddReply}
-                      />
-                    )}
+                    <CommentThread
+                      commentId={comment.id}
+                      replies={comment.replies || []}
+                      onAddReply={(commentId: string, reply: Omit<Reply, 'id' | 'createdAt'>) => {
+                        addReply(ticket.id, commentId, {
+                          ...reply,
+                          id: `reply-${Date.now()}`,
+                          createdAt: new Date()
+                        } as Reply);
+                      }}
+                    />
                   </div>
                 ))
               )}
