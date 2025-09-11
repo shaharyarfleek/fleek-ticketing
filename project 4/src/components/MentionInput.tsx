@@ -19,7 +19,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   rows = 3,
   onSubmit
 }) => {
-  const { authState } = useAuth();
+  const authContext = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
@@ -30,11 +30,11 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   // Load users for mentions on component mount
   useEffect(() => {
     const loadUsers = async () => {
-      console.log('🔧 Attempting to load users, authState:', !!authState, 'getAllUsers available:', !!authState.getAllUsers);
+      console.log('🔧 Attempting to load users, authContext:', !!authContext, 'getAllUsers available:', !!authContext.getAllUsers);
       try {
-        if (authState.getAllUsers) {
+        if (authContext.getAllUsers) {
           console.log('🔧 Calling getAllUsers...');
-          const loadedUsers = await authState.getAllUsers();
+          const loadedUsers = await authContext.getAllUsers();
           console.log('🔧 Raw loaded users from getAllUsers:', loadedUsers);
           // Convert AuthUser to User format
           const convertedUsers: User[] = loadedUsers.map(authUser => ({
@@ -48,7 +48,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
           setUsers(convertedUsers);
           console.log('🔧 MentionInput - Loaded users for mentions:', convertedUsers.length, convertedUsers.map(u => u.name));
         } else {
-          console.error('❌ getAllUsers function not available in authState');
+          console.error('❌ getAllUsers function not available in authContext');
         }
       } catch (error) {
         console.error('❌ Failed to load users for mentions:', error);
@@ -56,7 +56,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
     };
 
     loadUsers();
-  }, [authState]);
+  }, [authContext]);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
