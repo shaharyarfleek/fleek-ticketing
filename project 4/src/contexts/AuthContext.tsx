@@ -292,10 +292,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'UPDATE_PROFILE', payload: updatedUser });
   };
 
-  // Admin functions
+  // Admin functions (and user mentions)
   const getAllUsers = async (): Promise<AuthUser[]> => {
-    if (authState.user?.role !== 'admin') {
-      throw new Error('Unauthorized: Admin access required');
+    // Allow any authenticated user to get user list for mentions
+    if (!authState.user) {
+      throw new Error('Authentication required');
     }
     
     try {
@@ -458,9 +459,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     verifySecurityQuestions,
     resetPasswordWithSecurity,
     updateProfile,
+    // Available to all authenticated users (for mentions)
+    getAllUsers,
+    
     // Admin functions (only available to admin)
     ...(authState.user?.role === 'admin' && {
-      getAllUsers,
       blockUser,
       unblockUser,
       deleteUser,
@@ -468,7 +471,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }),
     // Admin functions (only available to super_admin)
     ...(authState.user?.role === 'super_admin' && {
-      getAllUsers,
       blockUser,
       unblockUser,
       deleteUser,

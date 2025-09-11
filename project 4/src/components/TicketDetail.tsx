@@ -506,9 +506,10 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                   <MentionInput
                     value={newComment}
                     onChange={setNewComment}
-                    placeholder="Add a comment... (Type @ to mention someone)"
+                    placeholder="Add a comment... (Type @ to mention someone, Enter to submit, Cmd+Enter for new line)"
                     className="w-full border border-slate-200/60 rounded-xl p-4 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 resize-none transition-all duration-300 bg-white/80 backdrop-blur-sm hover:bg-white"
                     rows={3}
+                    onSubmit={handleAddComment}
                   />
                   
                   {/* File Upload for Comments */}

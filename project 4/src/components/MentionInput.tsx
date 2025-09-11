@@ -8,6 +8,7 @@ interface MentionInputProps {
   placeholder?: string;
   className?: string;
   rows?: number;
+  onSubmit?: () => void;
 }
 
 export const MentionInput: React.FC<MentionInputProps> = ({
@@ -15,16 +16,42 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   onChange,
   placeholder,
   className,
-  rows = 3
+  rows = 3,
+  onSubmit
 }) => {
   const { authState } = useAuth();
-  const users = authState.getAllUsers ? authState.getAllUsers() : [];
-  console.log('🔧 MentionInput - Available users for mentions:', users.length, users.map(u => u.name));
+  const [users, setUsers] = useState<User[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionPosition, setMentionPosition] = useState(0);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load users for mentions on component mount
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        if (authState.getAllUsers) {
+          const loadedUsers = await authState.getAllUsers();
+          // Convert AuthUser to User format
+          const convertedUsers: User[] = loadedUsers.map(authUser => ({
+            id: authUser.id,
+            name: authUser.name,
+            email: authUser.email,
+            role: authUser.role as any,
+            department: authUser.department,
+            isBlocked: authUser.isBlocked
+          }));
+          setUsers(convertedUsers);
+          console.log('🔧 MentionInput - Loaded users for mentions:', convertedUsers.length, convertedUsers.map(u => u.name));
+        }
+      } catch (error) {
+        console.error('❌ Failed to load users for mentions:', error);
+      }
+    };
+
+    loadUsers();
+  }, [authState]);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
@@ -71,6 +98,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Handle mentions dropdown navigation
     if (showMentions && filteredUsers.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -87,6 +115,21 @@ export const MentionInput: React.FC<MentionInputProps> = ({
         insertMention(filteredUsers[selectedMentionIndex]);
       } else if (e.key === 'Escape') {
         setShowMentions(false);
+      }
+      return;
+    }
+
+    // Handle form submission when not in mentions mode
+    if (e.key === 'Enter') {
+      if (e.metaKey || e.ctrlKey) {
+        // Cmd+Enter or Ctrl+Enter: Insert new line (default behavior)
+        return;
+      } else {
+        // Plain Enter: Submit form
+        e.preventDefault();
+        if (onSubmit) {
+          onSubmit();
+        }
       }
     }
   };
