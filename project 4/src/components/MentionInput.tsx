@@ -30,9 +30,12 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   // Load users for mentions on component mount
   useEffect(() => {
     const loadUsers = async () => {
+      console.log('🔧 Attempting to load users, authState:', !!authState, 'getAllUsers available:', !!authState.getAllUsers);
       try {
         if (authState.getAllUsers) {
+          console.log('🔧 Calling getAllUsers...');
           const loadedUsers = await authState.getAllUsers();
+          console.log('🔧 Raw loaded users from getAllUsers:', loadedUsers);
           // Convert AuthUser to User format
           const convertedUsers: User[] = loadedUsers.map(authUser => ({
             id: authUser.id,
@@ -44,6 +47,8 @@ export const MentionInput: React.FC<MentionInputProps> = ({
           }));
           setUsers(convertedUsers);
           console.log('🔧 MentionInput - Loaded users for mentions:', convertedUsers.length, convertedUsers.map(u => u.name));
+        } else {
+          console.error('❌ getAllUsers function not available in authState');
         }
       } catch (error) {
         console.error('❌ Failed to load users for mentions:', error);

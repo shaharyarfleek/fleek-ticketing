@@ -294,13 +294,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Admin functions (and user mentions)
   const getAllUsers = async (): Promise<AuthUser[]> => {
+    console.log('🔧 getAllUsers called, current user:', authState.user?.name, 'role:', authState.user?.role);
     // Allow any authenticated user to get user list for mentions
     if (!authState.user) {
+      console.error('❌ No authenticated user for getAllUsers');
       throw new Error('Authentication required');
     }
     
     try {
+      console.log('🔧 Loading users from Supabase...');
       const supabaseUsers = await supabaseService.loadUsers();
+      console.log('🔧 Loaded from Supabase:', supabaseUsers.length, 'users');
       
       // Convert Supabase Users to AuthUsers
       return supabaseUsers.map(user => ({
