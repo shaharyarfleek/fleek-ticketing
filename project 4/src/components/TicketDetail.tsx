@@ -36,8 +36,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   ticket, 
   onBack
 }) => {
-  const { updateTicket, addComment, addReply, setReminder } = useData();
+  const { tickets, updateTicket, addComment, addReply, setReminder } = useData();
   const { authState } = useAuth();
+  
+  // Get the live ticket data from DataContext instead of relying on static prop
+  const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(true);
   const [commentAttachments, setCommentAttachments] = useState<Attachment[]>([]);
@@ -48,7 +51,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
   const handleStatusChange = async (newStatus: TicketStatus) => {
     try {
-      await updateTicket(ticket.id, { status: newStatus });
+      await updateTicket(liveTicket.id, { status: newStatus });
       console.log('✅ Ticket status updated:', newStatus);
     } catch (error) {
       console.error('❌ Failed to update ticket status:', error);
@@ -58,7 +61,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   const handleAssigneeChange = async (userId: string) => {
     try {
       const user = userId ? users.find(u => u.id === userId) || null : null;
-      await updateTicket(ticket.id, { assignee: user });
+      await updateTicket(liveTicket.id, { assignee: user });
       console.log('✅ Ticket assignee updated:', user?.name || 'Unassigned');
     } catch (error) {
       console.error('❌ Failed to update ticket assignee:', error);
@@ -86,7 +89,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
   const handleAddComment = async () => {
     if (newComment.trim() || commentAttachments.length > 0) {
-      console.log('🔧 Attempting to add comment by user:', currentUser?.name, 'to ticket:', ticket.id);
+      console.log('🔧 Attempting to add comment by user:', currentUser?.name, 'to ticket:', liveTicket.id);
       try {
         const comment: Comment = {
           id: `comment-${Date.now()}`,
@@ -99,7 +102,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           createdAt: new Date()
         };
         
-        await addComment(ticket.id, comment);
+        await addComment(liveTicket.id, comment);
         setNewComment('');
         setCommentAttachments([]);
         console.log('✅ Comment added successfully');
@@ -111,9 +114,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   };
 
   const handleMarkAsSolved = async () => {
-    console.log('🔧 Attempting to mark ticket as solved:', ticket.id, 'by user:', currentUser?.name);
+    console.log('🔧 Attempting to mark ticket as solved:', liveTicket.id, 'by user:', currentUser?.name);
     try {
-      await updateTicket(ticket.id, { status: 'resolved' });
+      await updateTicket(liveTicket.id, { status: 'resolved' });
       console.log('✅ Ticket marked as solved successfully');
       // Auto-close window after marking as solved
       setTimeout(() => {
@@ -132,7 +135,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
         createdAt: new Date(),
         ...reminderData
       };
-      await setReminder(ticket.id, reminder);
+      await setReminder(liveTicket.id, reminder);
       console.log('✅ Reminder set successfully');
     } catch (error) {
       console.error('❌ Failed to set reminder:', error);
@@ -141,12 +144,12 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
   const canMarkAsSolved = () => {
     // Allow anyone to mark tickets as resolved
-    console.log('🔧 CanMarkAsSolved check - Current user:', currentUser?.name, 'Ticket:', ticket.id);
+    console.log('🔧 CanMarkAsSolved check - Current user:', currentUser?.name, 'Ticket:', liveTicket.id);
     return true;
   };
 
   const canSetReminder = () => {
-    return ticket.assignee && ticket.assignee.id === currentUser.id;
+    return liveTicket.assignee && liveTicket.assignee.id === currentUser.id;
   };
 
   const getStatusOptions = (currentStatus: TicketStatus): TicketStatus[] => {
@@ -231,8 +234,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           </button>
           <div className="flex-1">
             <div className="flex items-center space-x-3 mb-2">
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{ticket.title}</h1>
-              {isOverdue(ticket.dueDate) && (
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{liveTicket.title}</h1>
+              {isOverdue(liveTicket.dueDate) && (
                 <div className="flex items-center space-x-1 px-3 py-1 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-full">
                   <AlertTriangle className="w-4 h-4 text-red-600" />
                   <span className="text-sm font-medium text-red-700">Overdue</span>
@@ -240,9 +243,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
               )}
             </div>
             <div className="flex items-center space-x-3 text-sm text-slate-500">
-              <span className="font-mono">{ticket.id}</span>
+              <span className="font-mono">{liveTicket.id}</span>
               <span>•</span>
-              <span>Created {formatDateTime(ticket.createdAt)}</span>
+              <span>Created {formatDateTime(liveTicket.createdAt)}</span>
             </div>
           </div>
         </div>
@@ -258,7 +261,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
             </button>
           )}
           
-          {canMarkAsSolved() && ticket.status !== 'resolved' && ticket.status !== 'closed' && (
+          {canMarkAsSolved() && liveTicket.status !== 'resolved' && liveTicket.status !== 'closed' && (
             <button
               onClick={handleMarkAsSolved}
               className="group bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-4 py-2.5 rounded-xl hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl"
@@ -280,11 +283,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
               <Target className="w-4 h-4 text-slate-500" />
               <span className="text-sm font-medium text-slate-700">SLA:</span>
               <div className={`px-3 py-1 rounded-lg text-sm font-medium border ${
-                isOverdue(ticket.dueDate) 
+                isOverdue(liveTicket.dueDate) 
                   ? 'bg-gradient-to-r from-red-50 to-red-100 border-red-200 text-red-700' 
                   : 'bg-gradient-to-r from-emerald-50 to-emerald-100 border-emerald-200 text-emerald-700'
               }`}>
-                {ticket.slaHours || ticket.department.slaHours}h
+                {liveTicket.slaHours || liveTicket.department.slaHours}h
               </div>
             </div>
 
@@ -292,14 +295,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
               <span className="text-sm font-medium text-slate-700">Status:</span>
               <div className="relative">
                 <select
-                  value={ticket.status}
+                  value={liveTicket.status}
                   onChange={(e) => handleStatusChange(e.target.value as TicketStatus)}
-                  className={`appearance-none border rounded-lg px-3 py-1.5 pr-8 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200 ${getStatusColor(ticket.status)}`}
+                  className={`appearance-none border rounded-lg px-3 py-1.5 pr-8 text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200 ${getStatusColor(liveTicket.status)}`}
                 >
-                  <option value={ticket.status}>
-                    {ticket.status.replace('_', ' ')}
+                  <option value={liveTicket.status}>
+                    {liveTicket.status.replace('_', ' ')}
                   </option>
-                  {getStatusOptions(ticket.status).map(status => (
+                  {getStatusOptions(liveTicket.status).map(status => (
                     <option key={status} value={status}>
                       {status.replace('_', ' ')}
                     </option>
@@ -311,20 +314,20 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-slate-700">Type:</span>
-              <span className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${getIssueTypeColor(ticket.issueType)}`}>
-                {ticket.issueType}
+              <span className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${getIssueTypeColor(liveTicket.issueType)}`}>
+                {liveTicket.issueType}
               </span>
             </div>
 
             <div className="flex items-center space-x-2">
               <Zap className="w-4 h-4 text-slate-500" />
               <span className="text-sm font-medium text-slate-700">Priority:</span>
-              <span className={`text-sm font-semibold ${getPriorityColor(ticket.priority)}`}>
-                {ticket.priority}
+              <span className={`text-sm font-semibold ${getPriorityColor(liveTicket.priority)}`}>
+                {liveTicket.priority}
               </span>
             </div>
 
-            {ticket.reminder && (
+            {liveTicket.reminder && (
               <div className="flex items-center space-x-2 px-3 py-1 bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-lg">
                 <Clock className="w-4 h-4 text-orange-600" />
                 <span className="text-sm font-medium text-orange-700">Reminder Set</span>
@@ -333,27 +336,27 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           </div>
 
           {/* Issue Category & POC */}
-          {(ticket.issueCategory || ticket.pocName) && (
+          {(liveTicket.issueCategory || liveTicket.pocName) && (
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-2xl p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                 <Sparkles className="w-5 h-5 mr-2 text-blue-600" />
                 Issue Details
               </h2>
               <div className="grid grid-cols-2 gap-6">
-                {ticket.issueCategory && (
+                {liveTicket.issueCategory && (
                   <div>
                     <p className="text-sm text-slate-600 mb-1">Issue Category</p>
-                    <p className="font-semibold text-slate-900">{ticket.issueCategory}</p>
+                    <p className="font-semibold text-slate-900">{liveTicket.issueCategory}</p>
                   </div>
                 )}
-                {ticket.pocName && (
+                {liveTicket.pocName && (
                   <div>
                     <p className="text-sm text-slate-600 mb-1">Point of Contact</p>
                     <p className="font-semibold text-slate-900">
-                      {ticket.pocName}
-                      {ticket.assignee && (
+                      {liveTicket.pocName}
+                      {liveTicket.assignee && (
                         <span className="ml-2 text-sm text-emerald-600 font-medium">
-                          (Assigned: {ticket.assignee.name})
+                          (Assigned: {liveTicket.assignee.name})
                         </span>
                       )}
                     </p>
@@ -364,37 +367,37 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           )}
 
           {/* Order Information */}
-          {(ticket.orderNumber || ticket.orderValue) && (
+          {(liveTicket.orderNumber || liveTicket.orderValue) && (
             <div className="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200/60 rounded-2xl p-6">
               <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                 <Package className="w-5 h-5 mr-2 text-slate-600" />
                 Order Information
               </h2>
               <div className="grid grid-cols-3 gap-6">
-                {ticket.orderNumber && (
+                {liveTicket.orderNumber && (
                   <div className="flex items-center space-x-3">
                     <Package className="w-5 h-5 text-slate-600" />
                     <div>
                       <p className="text-sm text-slate-500">Order Number</p>
-                      <p className="font-semibold text-slate-900 font-mono">{ticket.orderNumber}</p>
+                      <p className="font-semibold text-slate-900 font-mono">{liveTicket.orderNumber}</p>
                     </div>
                   </div>
                 )}
-                {ticket.orderValue && (
+                {liveTicket.orderValue && (
                   <div className="flex items-center space-x-3">
                     <DollarSign className="w-5 h-5 text-slate-600" />
                     <div>
                       <p className="text-sm text-slate-500">Order Value</p>
-                      <p className="font-semibold text-slate-900">{ticket.currency} {ticket.orderValue.toFixed(2)}</p>
+                      <p className="font-semibold text-slate-900">{liveTicket.currency} {liveTicket.orderValue.toFixed(2)}</p>
                     </div>
                   </div>
                 )}
-                {ticket.currency && (
+                {liveTicket.currency && (
                   <div className="flex items-center space-x-3">
                     <Globe className="w-5 h-5 text-slate-600" />
                     <div>
                       <p className="text-sm text-slate-500">Currency</p>
-                      <p className="font-semibold text-slate-900">{ticket.currency}</p>
+                      <p className="font-semibold text-slate-900">{liveTicket.currency}</p>
                     </div>
                   </div>
                 )}
@@ -406,18 +409,18 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           <div>
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Description</h2>
             <div className="bg-white/80 backdrop-blur-sm border border-slate-200/60 rounded-2xl p-6">
-              <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{ticket.description}</p>
+              <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{liveTicket.description}</p>
             </div>
           </div>
 
           {/* Attachments */}
-          {ticket.attachments?.length || 0 > 0 && (
+          {liveTicket.attachments?.length || 0 > 0 && (
             <div>
               <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center">
                 <Paperclip className="w-5 h-5 mr-2" />
                 Attachments
               </h2>
-              <AttachmentList attachments={ticket.attachments} />
+              <AttachmentList attachments={liveTicket.attachments} />
             </div>
           )}
 
@@ -425,7 +428,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           <div>
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Tags</h2>
             <div className="flex flex-wrap gap-2">
-              {ticket.tags.map((tag, index) => (
+              {liveTicket.tags.map((tag, index) => (
                 <span
                   key={index}
                   className="px-3 py-1.5 bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 rounded-lg text-sm font-medium border border-slate-200"
@@ -444,14 +447,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
             </h2>
             <div className="space-y-6">
               {(() => {
-                console.log('🔧 Rendering comments - Total:', ticket.comments?.length || 0, 'Comments:', ticket.comments);
-                return !ticket.comments || ticket.comments.length === 0 ? (
+                console.log('🔧 Rendering comments - Total:', liveTicket.comments?.length || 0, 'Comments:', liveTicket.comments);
+                return !liveTicket.comments || liveTicket.comments.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-500">No activity yet. Be the first to comment!</p>
                   </div>
                 ) : (
-                  ticket.comments.map((comment) => (
+                  liveTicket.comments.map((comment) => (
                   <div key={comment.id}>
                     <div className="flex space-x-4">
                       <div className="w-10 h-10 bg-gradient-to-br from-slate-200 to-slate-300 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -483,7 +486,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                       commentId={comment.id}
                       replies={comment.replies || []}
                       onAddReply={(commentId: string, reply: Omit<Reply, 'id' | 'createdAt'>) => {
-                        addReply(ticket.id, commentId, {
+                        addReply(liveTicket.id, commentId, {
                           ...reply,
                           id: `reply-${Date.now()}`,
                           createdAt: new Date()
@@ -557,7 +560,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
             </h3>
             <div className="relative">
               <select
-                value={ticket.assignee?.id || ''}
+                value={liveTicket.assignee?.id || ''}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
                 className="w-full appearance-none border border-slate-200/60 rounded-xl px-4 py-3 pr-10 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-300 bg-white/80 hover:bg-white"
               >
@@ -582,9 +585,9 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
             <div className="flex items-center space-x-3">
               <div 
                 className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: ticket.department.color }}
+                style={{ backgroundColor: liveTicket.department.color }}
               ></div>
-              <span className="text-sm font-medium text-slate-700">{ticket.department.name}</span>
+              <span className="text-sm font-medium text-slate-700">{liveTicket.department.name}</span>
             </div>
           </div>
 
@@ -597,25 +600,25 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
             <div className="space-y-4 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Created</span>
-                <span className="text-slate-900 font-medium">{formatDateTime(ticket.createdAt)}</span>
+                <span className="text-slate-900 font-medium">{formatDateTime(liveTicket.createdAt)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Updated</span>
-                <span className="text-slate-900 font-medium">{formatDateTime(ticket.updatedAt)}</span>
+                <span className="text-slate-900 font-medium">{formatDateTime(liveTicket.updatedAt)}</span>
               </div>
-              {ticket.dueDate && (
+              {liveTicket.dueDate && (
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">Due</span>
-                  <span className={`font-semibold ${isOverdue(ticket.dueDate) ? 'text-red-600' : 'text-slate-900'}`}>
-                    {formatDateTime(ticket.dueDate)}
+                  <span className={`font-semibold ${isOverdue(liveTicket.dueDate) ? 'text-red-600' : 'text-slate-900'}`}>
+                    {formatDateTime(liveTicket.dueDate)}
                   </span>
                 </div>
               )}
-              {ticket.reminder && (
+              {liveTicket.reminder && (
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500">Reminder</span>
                   <span className="text-orange-600 font-semibold">
-                    {formatDateTime(ticket.reminder.reminderTime)}
+                    {formatDateTime(liveTicket.reminder.reminderTime)}
                   </span>
                 </div>
               )}
@@ -630,8 +633,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                 <UserIcon className="w-5 h-5 text-slate-600" />
               </div>
               <div>
-                <div className="text-sm font-medium text-slate-700">{ticket.reporter.name}</div>
-                <div className="text-xs text-slate-500">{ticket.reporter.department.name}</div>
+                <div className="text-sm font-medium text-slate-700">{liveTicket.reporter.name}</div>
+                <div className="text-xs text-slate-500">{liveTicket.reporter.department.name}</div>
               </div>
             </div>
           </div>
@@ -643,7 +646,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
         isOpen={showReminderModal}
         onClose={() => setShowReminderModal(false)}
         onSetReminder={handleSetReminder}
-        ticketId={ticket.id}
+        ticketId={liveTicket.id}
         userId={currentUser.id}
       />
     </div>
