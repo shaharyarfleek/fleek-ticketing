@@ -141,23 +141,42 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authState, dispatch] = useReducer(authReducer, initialState);
 
-  // Check for existing session on mount
+  // Check for existing session on mount and clean up old localStorage data
   useEffect(() => {
-    const storedUser = localStorage.getItem(STORAGE_KEYS.AUTH_USER);
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        // Verify user still exists in database
-        const userExists = usersDatabase.find(u => u.id === user.id);
-        if (userExists) {
-          dispatch({ type: 'LOGIN_SUCCESS', payload: user });
-        } else {
+    // Clean up old localStorage-based user data (force migration to Supabase)
+    const cleanupOldData = () => {
+      // Remove old users database
+      localStorage.removeItem('fleek_users_database');
+      
+      // Remove old user passwords (they had user-timestamp format IDs)
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('fleek_user_password_user-')) {
+          localStorage.removeItem(key);
+          console.log('🧹 Cleaned up old password:', key);
+        }
+      });
+
+      // Check stored user for invalid ID format
+      const storedUser = localStorage.getItem(STORAGE_KEYS.AUTH_USER);
+      if (storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          // If user has invalid UUID format, remove it
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (!uuidRegex.test(user.id)) {
+            console.log('🧹 Removing user with invalid UUID:', user.id);
+            localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+          } else {
+            // Valid UUID, but verify user exists in Supabase
+            dispatch({ type: 'LOGIN_SUCCESS', payload: user });
+          }
+        } catch (error) {
           localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
         }
-      } catch (error) {
-        localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
       }
-    }
+    };
+
+    cleanupOldData();
   }, []);
 
   const login = async (credentials: LoginCredentials): Promise<void> => {
