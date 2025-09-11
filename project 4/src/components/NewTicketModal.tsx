@@ -444,7 +444,7 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
                 </option>
                 {availableCategories.map(category => (
                   <option key={category.name} value={category.name}>
-                    {category.name} (SLA: {category.slaHours}h)
+                    {category.name}
                   </option>
                 ))}
               </select>
