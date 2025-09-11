@@ -89,7 +89,7 @@ export interface AuthContextType {
   }) => Promise<void>;
   updateProfile: (data: Partial<AuthUser>) => Promise<void>;
   // Admin functions
-  getAllUsers?: () => AuthUser[];
+  getAllUsers?: () => Promise<AuthUser[]>;
   blockUser?: (userId: string, reason: string) => Promise<void>;
   unblockUser?: (userId: string) => Promise<void>;
   deleteUser?: (userId: string) => Promise<void>;
