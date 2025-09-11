@@ -402,7 +402,10 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
               <div className="relative">
                 <select
                   value={departmentId}
-                  onChange={(e) => setDepartmentId(e.target.value)}
+                  onChange={(e) => {
+                    setDepartmentId(e.target.value);
+                    setIssueCategory(''); // Reset issue category when department changes
+                  }}
                   className="w-full appearance-none border border-gray-200 rounded-lg px-4 py-3 pr-10 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all duration-200"
                   required
                 >
@@ -415,41 +418,79 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
             </div>
           </div>
 
-          {/* Issue Category */}
+          {/* Issue Category - Department Linked */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Issue Category (Optional)
+              <span className="ml-2 text-xs text-gray-500">
+                {availableCategories.length > 0 
+                  ? `${availableCategories.length} categories available for ${selectedDepartment?.name}` 
+                  : 'No categories defined for this department'
+                }
+              </span>
             </label>
             <div className="relative">
               <select
                 value={issueCategory}
                 onChange={(e) => setIssueCategory(e.target.value)}
                 className="w-full appearance-none border border-gray-200 rounded-lg px-4 py-3 pr-10 focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all duration-200"
+                disabled={availableCategories.length === 0}
               >
-                <option value="">Select issue category</option>
+                <option value="">
+                  {availableCategories.length > 0 
+                    ? "Select issue category" 
+                    : "No categories available for this department"
+                  }
+                </option>
                 {availableCategories.map(category => (
                   <option key={category.name} value={category.name}>
-                    {category.name} (SLA: {category.slaHours}h - POC: {category.poc}{category.poc2 ? `/${category.poc2}` : ''})
+                    {category.name} (SLA: {category.slaHours}h)
                   </option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>
+            
+            {/* Show selected category details */}
             {issueCategory && (
-              <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
                 <div className="text-sm">
-                  <div className="font-medium text-blue-900">Selected Category: {issueCategory}</div>
-                  <div className="text-blue-700 mt-1">
-                    SLA: {availableCategories.find(cat => cat.name === issueCategory)?.slaHours} hours
+                  <div className="font-medium text-green-900">✓ Selected: {issueCategory}</div>
+                  <div className="text-green-700 mt-1">
+                    📅 SLA: {availableCategories.find(cat => cat.name === issueCategory)?.slaHours} hours
                   </div>
-                  <div className="text-blue-700">
-                    POC: {availableCategories.find(cat => cat.name === issueCategory)?.poc}
-                    {availableCategories.find(cat => cat.name === issueCategory)?.poc2 && 
-                      `/${availableCategories.find(cat => cat.name === issueCategory)?.poc2}`}
+                  <div className="text-green-700">
+                    🏢 Department: {selectedDepartment?.name}
                   </div>
-                  <div className="text-blue-700 text-xs mt-1">
-                    ✅ Will be auto-assigned to POC when ticket is created
-                  </div>
+                  {availableCategories.find(cat => cat.name === issueCategory)?.poc && (
+                    <div className="text-green-700">
+                      👤 POC: {availableCategories.find(cat => cat.name === issueCategory)?.poc}
+                      {availableCategories.find(cat => cat.name === issueCategory)?.poc2 && 
+                        ` / ${availableCategories.find(cat => cat.name === issueCategory)?.poc2}`}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Show available categories for reference */}
+            {!issueCategory && availableCategories.length > 0 && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="text-xs text-gray-600 mb-2">
+                  📋 Available issue types for <strong>{selectedDepartment?.name}</strong>:
+                </div>
+                <div className="space-y-1">
+                  {availableCategories.slice(0, 6).map(category => (
+                    <div key={category.name} className="text-xs text-gray-700 flex items-center justify-between">
+                      <span>• {category.name}</span>
+                      <span className="text-gray-500">({category.slaHours}h SLA)</span>
+                    </div>
+                  ))}
+                  {availableCategories.length > 6 && (
+                    <div className="text-xs text-gray-500">
+                      ... and {availableCategories.length - 6} more categories
+                    </div>
+                  )}
                 </div>
               </div>
             )}
