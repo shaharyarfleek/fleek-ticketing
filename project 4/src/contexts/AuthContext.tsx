@@ -4,57 +4,10 @@ import { departments } from '../data/mockData';
 import { supabaseService } from '../services/supabaseService';
 import { User } from '../types';
 
-// Only admin user - will be created if doesn't exist
-const createAdminUser = (): AuthUser => ({
-  id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // UUID matching Supabase user
-  username: 'admin',
-  email: 'admin@fleek.com',
-  name: 'System Administrator',
-  role: 'admin',
-  department: departments[0],
-  createdAt: new Date('2024-01-01'),
-  lastLogin: new Date(),
-  isActive: true,
-  isBlocked: false,
-});
-
-// Storage keys
+// Storage keys for session management
 const STORAGE_KEYS = {
-  USERS: 'fleek_users_database',
   AUTH_USER: 'fleek_auth_user'
 };
-
-// Get users from localStorage or return initial users
-const getUsersFromStorage = (): AuthUser[] => {
-  try {
-    const storedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
-    if (storedUsers) {
-      const parsed = JSON.parse(storedUsers);
-      // Check if admin exists, if not add it
-      const hasAdmin = parsed.some((u: AuthUser) => u.username.toLowerCase() === 'admin');
-      if (!hasAdmin) {
-        return [...parsed, createAdminUser()];
-      }
-      return parsed;
-    }
-  } catch (error) {
-    console.error('Error loading users from storage:', error);
-  }
-  // If no users exist, create admin user
-  return [createAdminUser()];
-};
-
-// Save users to localStorage
-const saveUsersToStorage = (users: AuthUser[]) => {
-  try {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-  } catch (error) {
-    console.error('Error saving users to storage:', error);
-  }
-};
-
-// Initialize users database
-let usersDatabase = getUsersFromStorage();
 
 type AuthAction =
   | { type: 'LOGIN_START' }
@@ -223,25 +176,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'SIGNUP_START' });
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Reload users from storage to get latest data
-      usersDatabase = getUsersFromStorage();
-
       // Validate passwords match
       if (data.password !== data.confirmPassword) {
         throw new Error('Passwords do not match');
-      }
-
-      // Check if username already exists (case-insensitive)
-      if (usersDatabase.some(u => u.username.toLowerCase() === data.username.toLowerCase())) {
-        throw new Error('Username already exists');
-      }
-
-      // Check if email already exists (case-insensitive)
-      if (usersDatabase.some(u => u.email.toLowerCase() === data.email.toLowerCase())) {
-        throw new Error('Email already exists');
       }
 
       // Password strength validation
@@ -253,6 +190,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       }
 
+      // Check if email already exists in Supabase
+      const existingUser = await supabaseService.getUserByEmail(data.email.toLowerCase().trim());
+      if (existingUser) {
+        throw new Error('Email already exists');
+      }
+
       // Generate a proper UUID for the new user
       const generateUUID = () => {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -262,30 +205,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         });
       };
 
-      // Create new user
-      const newUser: AuthUser = {
-        id: generateUUID(), // Use proper UUID format
-        username: data.username.toLowerCase().trim(),
-        email: data.email.toLowerCase().trim(),
+      // Create new user for Supabase
+      const newSupabaseUser: User = {
+        id: generateUUID(),
         name: data.name.trim(),
+        email: data.email.toLowerCase().trim(),
         role: 'agent',
-        department: data.department ? departments.find(d => d.id === data.department) : undefined,
+        department: data.department ? departments.find(d => d.id === data.department) || departments[0] : departments[0],
+        isBlocked: false
+      };
+
+      // Save user to Supabase
+      await supabaseService.createUser(newSupabaseUser);
+
+      // Store password in localStorage for demo (in production, this would be handled by proper auth service)
+      localStorage.setItem(`fleek_user_password_${newSupabaseUser.id}`, data.password);
+
+      // Convert to AuthUser format
+      const authUser: AuthUser = {
+        id: newSupabaseUser.id,
+        username: newSupabaseUser.name.toLowerCase().replace(/\s+/g, ''),
+        email: newSupabaseUser.email,
+        name: newSupabaseUser.name,
+        role: newSupabaseUser.role as any,
+        department: newSupabaseUser.department,
         createdAt: new Date(),
         lastLogin: new Date(),
         isActive: true,
         isBlocked: false,
       };
 
-      // Add to database and save
-      usersDatabase.push(newUser);
-      saveUsersToStorage(usersDatabase);
-
-      // Store password separately (in real app, this would be properly hashed)
-      localStorage.setItem(`fleek_user_password_${newUser.id}`, data.password);
-
       // Auto-login after signup
-      localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(newUser));
-      dispatch({ type: 'SIGNUP_SUCCESS', payload: newUser });
+      localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(authUser));
+      dispatch({ type: 'SIGNUP_SUCCESS', payload: authUser });
+      
+      console.log('✅ User created in Supabase and logged in:', authUser.email);
     } catch (error) {
       dispatch({ 
         type: 'SIGNUP_FAILURE', 
@@ -304,10 +258,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Reload users from storage
-    usersDatabase = getUsersFromStorage();
-
-    const user = usersDatabase.find(u => u.email.toLowerCase() === email.toLowerCase());
+    // Check if user exists in Supabase
+    const user = await supabaseService.getUserByEmail(email.toLowerCase());
     if (!user) {
       throw new Error('No account found with this email address');
     }
@@ -375,26 +327,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    usersDatabase = getUsersFromStorage();
-    const userIndex = usersDatabase.findIndex(u => u.id === userId);
+    // Update user in Supabase to set is_active = false
+    await supabaseService.updateUser(userId, { isBlocked: true } as Partial<User>);
     
-    if (userIndex === -1) {
-      throw new Error('User not found');
-    }
-
-    if (usersDatabase[userIndex].role === 'super_admin') {
-      throw new Error('Cannot block super admin');
-    }
-
-    usersDatabase[userIndex] = {
-      ...usersDatabase[userIndex],
-      isBlocked: true,
-      blockedAt: new Date(),
-      blockedBy: authState.user.id,
-      blockedReason: reason
-    };
-
-    saveUsersToStorage(usersDatabase);
+    console.log(`User ${userId} blocked with reason: ${reason}`);
   };
 
   const unblockUser = async (userId: string): Promise<void> => {
@@ -404,22 +340,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    usersDatabase = getUsersFromStorage();
-    const userIndex = usersDatabase.findIndex(u => u.id === userId);
+    // Update user in Supabase to set is_active = true
+    await supabaseService.updateUser(userId, { isBlocked: false } as Partial<User>);
     
-    if (userIndex === -1) {
-      throw new Error('User not found');
-    }
-
-    usersDatabase[userIndex] = {
-      ...usersDatabase[userIndex],
-      isBlocked: false,
-      blockedAt: undefined,
-      blockedBy: undefined,
-      blockedReason: undefined
-    };
-
-    saveUsersToStorage(usersDatabase);
+    console.log(`User ${userId} unblocked`);
   };
 
   const deleteUser = async (userId: string): Promise<void> => {
@@ -429,23 +353,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    usersDatabase = getUsersFromStorage();
-    const userIndex = usersDatabase.findIndex(u => u.id === userId);
+    // Delete user from Supabase (this will deactivate them for safety)
+    await supabaseService.deleteUser(userId);
     
-    if (userIndex === -1) {
-      throw new Error('User not found');
-    }
-
-    if (usersDatabase[userIndex].role === 'super_admin') {
-      throw new Error('Cannot delete super admin');
-    }
-
-    // Remove user from database
-    usersDatabase.splice(userIndex, 1);
-    saveUsersToStorage(usersDatabase);
-
     // Clean up user's password
     localStorage.removeItem(`fleek_user_password_${userId}`);
+    
+    console.log(`User ${userId} deactivated`);
   };
 
   const updateUserProfile = async (userId: string, data: Partial<AuthUser>): Promise<void> => {
@@ -455,33 +369,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    usersDatabase = getUsersFromStorage();
-    const userIndex = usersDatabase.findIndex(u => u.id === userId);
-    
-    if (userIndex === -1) {
-      throw new Error('User not found');
-    }
-
-    // Prevent changing super admin role
-    if (usersDatabase[userIndex].role === 'super_admin' && data.role !== 'super_admin') {
-      throw new Error('Cannot change super admin role');
-    }
-
-    usersDatabase[userIndex] = {
-      ...usersDatabase[userIndex],
-      ...data,
-      id: usersDatabase[userIndex].id, // Prevent ID changes
+    // Convert AuthUser data to User format for Supabase
+    const userUpdate: Partial<User> = {
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      department: data.department,
+      isBlocked: data.isBlocked
     };
 
-    saveUsersToStorage(usersDatabase);
+    // Update user in Supabase
+    await supabaseService.updateUser(userId, userUpdate);
+    
+    console.log(`User ${userId} profile updated in Supabase`);
   };
 
   // Security questions functions
   const verifySecurityQuestions = async (email: string, answers: SecurityQuestion[]): Promise<boolean> => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    usersDatabase = getUsersFromStorage();
-    const user = usersDatabase.find(u => u.email.toLowerCase() === email.toLowerCase());
+    // Check if user exists in Supabase
+    const user = await supabaseService.getUserByEmail(email.toLowerCase());
     
     if (!user) {
       throw new Error('User not found');
@@ -494,9 +402,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         "What was the name of your first pet?": "fluffy",
         "What city were you born in?": "new york"
       },
-      'sarah@fleek.com': {
-        "What was the name of your first pet?": "buddy",
-        "What city were you born in?": "chicago"
+      'shaharyar@fleek.com': {
+        "What was the name of your first pet?": "buddy", 
+        "What city were you born in?": "karachi"
       }
     };
 
@@ -529,15 +437,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw new Error('Passwords do not match');
     }
 
-    usersDatabase = getUsersFromStorage();
-    const userIndex = usersDatabase.findIndex(u => u.email.toLowerCase() === data.email.toLowerCase());
+    // Check if user exists in Supabase
+    const user = await supabaseService.getUserByEmail(data.email.toLowerCase());
     
-    if (userIndex === -1) {
+    if (!user) {
       throw new Error('User not found');
     }
 
-    // Store new password
-    localStorage.setItem(`fleek_user_password_${usersDatabase[userIndex].id}`, data.newPassword);
+    // Store new password (in production, this would be handled by proper auth service)
+    localStorage.setItem(`fleek_user_password_${user.id}`, data.newPassword);
+    console.log('✅ Password updated for user:', user.email);
   };
 
   const value: AuthContextType = {

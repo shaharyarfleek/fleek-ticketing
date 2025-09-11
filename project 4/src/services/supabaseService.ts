@@ -314,16 +314,51 @@ class SupabaseService {
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<void> {
+    // Only update fields that are provided and valid
+    const updateData: any = {};
+    
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.email !== undefined) updateData.email = updates.email;
+    if (updates.role !== undefined) updateData.role = updates.role;
+    if (updates.department !== undefined) {
+      updateData.department_id = updates.department.id;
+      updateData.department_name = updates.department.name;
+    }
+    if (updates.isBlocked !== undefined) updateData.is_active = !updates.isBlocked;
+
+    updateData.updated_at = new Date().toISOString();
+
     const { error } = await supabase
       .from(TABLES.USERS)
-      .update({
-        ...this.mapUserToDatabaseUser(updates as User),
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', userId);
 
     if (error) throw error;
     console.log('✅ User updated in Supabase:', userId);
+  }
+
+  async deleteUser(userId: string): Promise<void> {
+    // Safety check - don't delete admin users
+    const { data: user, error: getUserError } = await supabase
+      .from(TABLES.USERS)
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (getUserError) throw getUserError;
+
+    if (user.role === 'admin' || user.role === 'super_admin') {
+      throw new Error('Cannot delete admin users');
+    }
+
+    // Instead of deleting, mark as inactive for safety
+    const { error } = await supabase
+      .from(TABLES.USERS)
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('id', userId);
+
+    if (error) throw error;
+    console.log('✅ User deactivated in Supabase:', userId);
   }
 
   async loadUsers(): Promise<User[]> {
@@ -413,7 +448,7 @@ class SupabaseService {
         throw new Error('User not found');
       }
 
-      // For demo, we'll check against hardcoded passwords
+      // For demo, we'll check against hardcoded passwords and localStorage stored passwords
       const user = users[0];
       const validPasswords: Record<string, string> = {
         'admin@fleek.com': 'admin123',
@@ -423,8 +458,17 @@ class SupabaseService {
         'bob@fleek.com': 'bob123'
       };
 
-      // Check if password matches
-      if (validPasswords[user.email] !== password) {
+      // Check if password matches (hardcoded or stored in localStorage for new users)
+      let isValidPassword = false;
+      if (validPasswords[user.email]) {
+        isValidPassword = validPasswords[user.email] === password;
+      } else {
+        // Check localStorage for user passwords (for newly created users)
+        const storedPassword = localStorage.getItem(`fleek_user_password_${user.id}`);
+        isValidPassword = storedPassword === password;
+      }
+
+      if (!isValidPassword) {
         throw new Error('Invalid credentials');
       }
 
