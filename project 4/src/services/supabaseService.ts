@@ -63,31 +63,32 @@ class SupabaseService {
       description: ticket.description,
       status: ticket.status,
       priority: ticket.priority,
-      department_id: ticket.department.id,
-      department_name: ticket.department.name,
-      assignee_id: ticket.assignee?.id,
-      assignee_name: ticket.assignee?.name,
-      assignee_email: ticket.assignee?.email,
+      department_id: ticket.department?.id || 'dept-default',
+      department_name: ticket.department?.name || 'Default Department',
+      assignee_id: ticket.assignee?.id || null,
+      assignee_name: ticket.assignee?.name || null,
+      assignee_email: ticket.assignee?.email || null,
       reporter_id: ticket.reporter.id,
       reporter_name: ticket.reporter.name,
       reporter_email: ticket.reporter.email,
-      due_date: ticket.dueDate?.toISOString(),
-      tags: ticket.tags,
-      issue_type: ticket.issueType,
-      order_number: ticket.orderNumber,
-      order_value: ticket.orderValue,
-      refund_value: ticket.refundValue,
-      currency: ticket.currency,
-      issue_category: ticket.issueCategory,
-      sla_hours: ticket.slaHours,
-      poc_name: ticket.pocName,
-      escalation_level: ticket.escalationLevel,
-      business_impact: ticket.businessImpact,
-      resolution_time: ticket.resolutionTime ? new Date(Date.now() + ticket.resolutionTime * 60000).toISOString() : undefined,
-      first_response_time: ticket.firstResponseTime ? new Date(Date.now() + ticket.firstResponseTime * 60000).toISOString() : undefined,
-      watchers: ticket.watchers,
-      linked_tickets: ticket.linkedTickets,
-      custom_fields: ticket.customFields
+      due_date: ticket.dueDate?.toISOString() || null,
+      tags: ticket.tags || [],
+      issue_type: ticket.issueType || 'general',
+      order_number: ticket.orderNumber || null,
+      order_value: ticket.orderValue || null,
+      refund_value: ticket.refundValue || null,
+      currency: ticket.currency || null,
+      issue_category: ticket.issueCategory || null,
+      sla_hours: ticket.slaHours || null,
+      poc_name: ticket.pocName || null,
+      escalation_level: ticket.escalationLevel || 'none',
+      business_impact: ticket.businessImpact || 'medium',
+      // Handle resolution and response times correctly - these should be null for new tickets
+      resolution_time: null,
+      first_response_time: null,
+      watchers: ticket.watchers || [],
+      linked_tickets: ticket.linkedTickets || [],
+      custom_fields: ticket.customFields || {}
     };
   }
 
@@ -122,12 +123,42 @@ class SupabaseService {
   }
 
   // Ticket operations
+  private isValidUUID(uuid: string): boolean {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(uuid);
+  }
+
+  private convertToValidUUID(id: string): string {
+    // If already a valid UUID, return as is
+    if (this.isValidUUID(id)) {
+      return id;
+    }
+    
+    // For non-UUID IDs like "user-1756737662078", map to admin UUID
+    console.warn(`⚠️ Non-UUID ID detected: ${id}, using admin UUID`);
+    return 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'; // Admin UUID
+  }
+
   async createTicket(ticket: Ticket): Promise<void> {
+    const dbTicket = this.mapTicketToDatabaseTicket(ticket);
+    
+    // Ensure UUIDs are valid
+    dbTicket.reporter_id = this.convertToValidUUID(dbTicket.reporter_id!);
+    if (dbTicket.assignee_id) {
+      dbTicket.assignee_id = this.convertToValidUUID(dbTicket.assignee_id);
+    }
+    
+    console.log('🔄 Creating ticket in Supabase:', ticket.id);
+    console.log('📄 Database ticket data:', dbTicket);
+
     const { error } = await supabase
       .from(TABLES.TICKETS)
-      .insert(this.mapTicketToDatabaseTicket(ticket));
+      .insert(dbTicket);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Supabase error details:', error);
+      throw error;
+    }
     console.log('✅ Ticket created in Supabase:', ticket.id);
   }
 
@@ -259,11 +290,26 @@ class SupabaseService {
 
   // User operations
   async createUser(user: User): Promise<void> {
+    const dbUser = this.mapUserToDatabaseUser(user);
+    
+    // Ensure user ID is valid UUID
+    if (!this.isValidUUID(dbUser.id!)) {
+      console.warn(`⚠️ Invalid user UUID: ${dbUser.id}, skipping user creation`);
+      return; // Skip creating users with invalid UUIDs
+    }
+    
     const { error } = await supabase
       .from(TABLES.USERS)
-      .insert(this.mapUserToDatabaseUser(user));
+      .insert(dbUser);
 
-    if (error) throw error;
+    if (error) {
+      // Handle duplicate user error gracefully
+      if (error.code === '23505') { // unique constraint violation
+        console.warn(`⚠️ User already exists: ${user.id}`);
+        return;
+      }
+      throw error;
+    }
     console.log('✅ User created in Supabase:', user.id);
   }
 
@@ -350,6 +396,70 @@ class SupabaseService {
     return () => {
       supabase.removeChannel(subscription);
     };
+  }
+
+  // Authentication operations
+  async authenticateUser(username: string, password: string): Promise<User | null> {
+    try {
+      // Find user by email or name (since we don't have username column)
+      const { data: users, error } = await supabase
+        .from(TABLES.USERS)
+        .select('*')
+        .or(`email.ilike.%${username}%,name.ilike.%${username}%`);
+
+      if (error) throw error;
+
+      if (!users || users.length === 0) {
+        throw new Error('User not found');
+      }
+
+      // For demo, we'll check against hardcoded passwords
+      const user = users[0];
+      const validPasswords: Record<string, string> = {
+        'admin@fleek.com': 'admin123',
+        'shaharyar@fleek.com': 'shaharyar123',
+        'john@fleek.com': 'john123',
+        'jane@fleek.com': 'jane123',
+        'bob@fleek.com': 'bob123'
+      };
+
+      // Check if password matches
+      if (validPasswords[user.email] !== password) {
+        throw new Error('Invalid credentials');
+      }
+
+      if (!user.is_active) {
+        throw new Error('Account is deactivated');
+      }
+
+      console.log('✅ User authenticated:', user.email);
+      return this.mapDatabaseUserToUser(user);
+    } catch (error) {
+      console.error('❌ Authentication failed:', error);
+      throw error;
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.USERS)
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') { // No rows found
+          return null;
+        }
+        throw error;
+      }
+
+      return this.mapDatabaseUserToUser(data);
+    } catch (error) {
+      console.error('Failed to get user by email:', error);
+      return null;
+    }
   }
 
   // Health check

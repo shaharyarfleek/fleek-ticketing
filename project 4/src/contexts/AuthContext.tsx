@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { AuthState, AuthUser, LoginCredentials, SignupData, AuthContextType } from '../types/auth';
 import { departments } from '../data/mockData';
+import { supabaseService } from '../services/supabaseService';
+import { User } from '../types';
 
 // Only admin user - will be created if doesn't exist
 const createAdminUser = (): AuthUser => ({
@@ -162,77 +164,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'LOGIN_START' });
 
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Reload users from storage to get latest data
-      usersDatabase = getUsersFromStorage();
-
-      // Find user by username OR email (case-insensitive)
-      const loginIdentifier = credentials.username.toLowerCase().trim();
-      const user = usersDatabase.find(u => 
-        u.username.toLowerCase() === loginIdentifier || 
-        u.email.toLowerCase() === loginIdentifier
-      );
+      // Authenticate with Supabase
+      const supabaseUser = await supabaseService.authenticateUser(credentials.username, credentials.password);
       
-      if (!user) {
+      if (!supabaseUser) {
         throw new Error('Invalid username/email or password');
       }
 
-      // Check password (in real app, this would be hashed)
-      const validPasswords: Record<string, string> = {
-        'admin': 'admin123',
-      };
-
-      // For dynamically created users, we'll store a simple password
-      // In a real app, passwords would be properly hashed
-      let isValidPassword = false;
-      
-      if (validPasswords[user.username]) {
-        // Check against predefined passwords
-        isValidPassword = validPasswords[user.username] === credentials.password;
-      } else {
-        // For new users, we'll use a simple check (in real app, use proper hashing)
-        // For demo purposes, we'll store the password in a way that can be verified
-        const storedPassword = localStorage.getItem(`fleek_user_password_${user.id}`);
-        isValidPassword = storedPassword === credentials.password;
-      }
-
-      if (!isValidPassword) {
-        throw new Error('Invalid username/email or password');
-      }
-
-      if (!user.isActive) {
-        throw new Error('Account is deactivated. Please contact administrator.');
-      }
-
-      if (user.isBlocked) {
-        throw new Error('Account is blocked. Please contact administrator.');
-      }
-
-      if (user.isBlocked) {
-        throw new Error('Account is blocked. Please contact administrator.');
-      }
-
-      // Update last login
-      const updatedUser = {
-        ...user,
+      // Convert Supabase User to AuthUser
+      const authUser: AuthUser = {
+        id: supabaseUser.id,
+        username: supabaseUser.name.toLowerCase().replace(/\s+/g, ''), // Convert name to username
+        email: supabaseUser.email,
+        name: supabaseUser.name,
+        role: supabaseUser.role as any,
+        department: supabaseUser.department,
+        createdAt: new Date(),
         lastLogin: new Date(),
+        isActive: !supabaseUser.isBlocked,
+        isBlocked: supabaseUser.isBlocked,
       };
-
-      // Update the user in our database
-      const userIndex = usersDatabase.findIndex(u => u.id === user.id);
-      if (userIndex !== -1) {
-        usersDatabase[userIndex] = updatedUser;
-        saveUsersToStorage(usersDatabase);
-      }
 
       // Store in localStorage if remember me is checked
       if (credentials.rememberMe) {
-        localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(updatedUser));
+        localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(authUser));
       }
 
-      dispatch({ type: 'LOGIN_SUCCESS', payload: updatedUser });
+      dispatch({ type: 'LOGIN_SUCCESS', payload: authUser });
     } catch (error) {
       dispatch({ 
         type: 'LOGIN_FAILURE', 
@@ -276,9 +234,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
       }
 
+      // Generate a proper UUID for the new user
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+
       // Create new user
       const newUser: AuthUser = {
-        id: `user-${Date.now()}`,
+        id: generateUUID(), // Use proper UUID format
         username: data.username.toLowerCase().trim(),
         email: data.email.toLowerCase().trim(),
         name: data.name.trim(),
@@ -355,11 +322,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Admin functions
-  const getAllUsers = (): AuthUser[] => {
+  const getAllUsers = async (): Promise<AuthUser[]> => {
     if (authState.user?.role !== 'admin') {
       throw new Error('Unauthorized: Admin access required');
     }
-    return getUsersFromStorage();
+    
+    try {
+      const supabaseUsers = await supabaseService.loadUsers();
+      
+      // Convert Supabase Users to AuthUsers
+      return supabaseUsers.map(user => ({
+        id: user.id,
+        username: user.name.toLowerCase().replace(/\s+/g, ''),
+        email: user.email,
+        name: user.name,
+        role: user.role as any,
+        department: user.department,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        isActive: !user.isBlocked,
+        isBlocked: user.isBlocked,
+      }));
+    } catch (error) {
+      console.error('Failed to load users from Supabase:', error);
+      return [];
+    }
   };
 
   const blockUser = async (userId: string, reason: string): Promise<void> => {

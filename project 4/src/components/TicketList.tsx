@@ -65,7 +65,7 @@ export const TicketList: React.FC<TicketListProps> = ({
         status: 'new',
         priority: ticketData.priority,
         severity: 'medium',
-        department: ticketData.department,
+        department: ticketData.department || departments[0],
         assignee: ticketData.assignee || null,
         reporter: currentUser || { 
           id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // Default admin UUID
@@ -79,11 +79,11 @@ export const TicketList: React.FC<TicketListProps> = ({
         updatedAt: new Date(),
         resolvedAt: undefined,
         firstResponseAt: undefined,
-        tags: ticketData.tags,
+        tags: ticketData.tags || [],
         comments: [],
         dueDate: ticketData.dueDate,
         attachments: ticketData.attachments || [],
-        issueType: ticketData.issueType,
+        issueType: ticketData.issueType || 'general',
         orderNumber: ticketData.orderNumber,
         orderValue: ticketData.orderValue,
         refundValue: ticketData.refundValue,
@@ -104,12 +104,14 @@ export const TicketList: React.FC<TicketListProps> = ({
         worklog: [],
       };
 
+      console.log('🎫 Creating ticket with data:', newTicket);
       await addTicket(newTicket);
       setShowNewTicketModal(false);
       console.log('✅ Ticket created successfully:', newTicket.id);
     } catch (error) {
       console.error('❌ Failed to create ticket:', error);
-      // You could show an error message to the user here
+      // Show more detailed error to user
+      alert(`Failed to create ticket: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
