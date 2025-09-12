@@ -8,6 +8,7 @@ interface DataContextType {
   addTicket: (ticket: Ticket) => Promise<void>;
   updateTicket: (ticketId: string, updates: Partial<Ticket>) => Promise<void>;
   deleteTicket: (ticketId: string) => Promise<void>;
+  loadTicketComments: (ticketId: string) => Promise<void>;
   
   // Comment management
   addComment: (ticketId: string, comment: Comment) => Promise<void>;
@@ -69,13 +70,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           supabaseService.loadUsers()
         ]);
         
-        // Load comments for each ticket
-        const ticketsWithComments = await Promise.all(
-          storedTickets.map(async (ticket) => ({
-            ...ticket,
-            comments: await supabaseService.loadTicketComments(ticket.id)
-          }))
-        );
+        // Load tickets without comments first for faster initial load
+        // Comments will be loaded on-demand when tickets are opened
+        const ticketsWithComments = storedTickets.map(ticket => ({
+          ...ticket,
+          comments: [] // Empty comments array, will be loaded when ticket is opened
+        }));
         
         setTickets(ticketsWithComments);
         setUsers(storedUsers);
@@ -166,6 +166,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('❌ Failed to delete ticket:', error);
       throw error;
+    }
+  }, []);
+
+  // Load comments for a specific ticket on-demand
+  const loadTicketComments = useCallback(async (ticketId: string) => {
+    try {
+      const comments = await supabaseService.loadTicketComments(ticketId);
+      setTickets(prev => prev.map(ticket => 
+        ticket.id === ticketId 
+          ? { ...ticket, comments }
+          : ticket
+      ));
+    } catch (error) {
+      console.error('❌ Failed to load ticket comments:', error);
     }
   }, []);
 
@@ -367,6 +381,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addTicket,
     updateTicket,
     deleteTicket,
+    loadTicketComments,
     
     // Comment operations
     addComment,

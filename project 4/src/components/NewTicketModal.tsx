@@ -55,8 +55,25 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   const [generatedTags, setGeneratedTags] = useState<string[]>([]);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   
-  // Get users from auth context
-  const users = authState.getAllUsers ? authState.getAllUsers() : [];
+  // State for users loaded from auth context
+  const [users, setUsers] = useState<any[]>([]);
+
+  // Load users from auth context
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        if (authState.getAllUsers) {
+          const loadedUsers = await authState.getAllUsers();
+          setUsers(loadedUsers);
+          console.log('🔄 NewTicketModal: Loaded users for assignment:', loadedUsers.length);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load users for assignment:', error);
+      }
+    };
+
+    loadUsers();
+  }, [authState]);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const orderDropdownRef = useRef<HTMLDivElement>(null);

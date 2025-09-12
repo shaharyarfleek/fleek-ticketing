@@ -36,7 +36,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   ticket, 
   onBack
 }) => {
-  const { tickets, updateTicket, addComment, addReply, setReminder } = useData();
+  const { tickets, updateTicket, addComment, addReply, setReminder, loadTicketComments } = useData();
   const { authState } = useAuth();
   
   // Get the live ticket data from DataContext instead of relying on static prop
@@ -47,7 +47,32 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   const [showReminderModal, setShowReminderModal] = useState(false);
 
   const currentUser = authState.user || { id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', name: 'Admin', email: 'admin@fleek.com', department: departments[0], role: 'admin' };
-  const users = authState.getAllUsers ? authState.getAllUsers() : [];
+  const [users, setUsers] = useState<any[]>([]);
+
+  // Load users from auth context
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        if (authState.getAllUsers) {
+          const loadedUsers = await authState.getAllUsers();
+          setUsers(loadedUsers);
+          console.log('🔄 TicketDetail: Loaded users for assignment:', loadedUsers.length);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load users for assignment:', error);
+      }
+    };
+
+    loadUsers();
+  }, [authState]);
+
+  // Load comments when ticket is opened (if not already loaded)
+  useEffect(() => {
+    if (liveTicket && (!liveTicket.comments || liveTicket.comments.length === 0)) {
+      console.log('🔄 Loading comments for ticket:', liveTicket.id);
+      loadTicketComments(liveTicket.id);
+    }
+  }, [liveTicket.id, loadTicketComments]);
 
   const handleStatusChange = async (newStatus: TicketStatus) => {
     try {
