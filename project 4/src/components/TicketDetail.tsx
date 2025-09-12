@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Ticket, TicketStatus, Comment, User, Attachment, Reply, Reminder } from '../types';
 import { formatDateTime, isOverdue } from '../utils/dateUtils';
 import { departments } from '../data/mockData';
