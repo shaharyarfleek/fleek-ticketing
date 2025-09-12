@@ -238,12 +238,19 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
     setIssueCategory('');
   };
 
-  // Filter users based on search
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
-    user.email.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
-    user.department.name.toLowerCase().includes(assigneeSearch.toLowerCase())
-  );
+  // Filter users based on search and selected department
+  const filteredUsers = users.filter(user => {
+    // If no department is selected, show all users (for backwards compatibility)
+    const matchesDepartment = !departmentId || user.department.id === departmentId;
+    
+    // Check search criteria
+    const matchesSearch = assigneeSearch === '' || 
+      user.name.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
+      user.email.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
+      user.department.name.toLowerCase().includes(assigneeSearch.toLowerCase());
+    
+    return matchesDepartment && matchesSearch;
+  });
 
   // Use search results directly (no client-side filtering needed)
   const filteredOrderNumbers = orderNumbers;

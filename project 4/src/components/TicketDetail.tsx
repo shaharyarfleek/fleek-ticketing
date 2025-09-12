@@ -215,11 +215,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
     });
   };
 
-  // Group users by department for assignee dropdown
-  const usersByDepartment = departments.map(dept => ({
-    department: dept,
-    users: users.filter(user => user.department.id === dept.id)
-  }));
+  // Filter users to show only those from the ticket's department
+  const departmentUsers = users.filter(user => user.department.id === liveTicket.department.id);
+  
+  // Group users by department for assignee dropdown (only the ticket's department)
+  const usersByDepartment = [{
+    department: liveTicket.department,
+    users: departmentUsers
+  }];
 
   return (
     <div className="max-w-5xl mx-auto px-8 py-8">
