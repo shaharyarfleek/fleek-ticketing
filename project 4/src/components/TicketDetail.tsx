@@ -97,9 +97,43 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
   const handleAssigneeChange = async (userId: string) => {
     try {
-      const user = userId ? users.find(u => u.id === userId) || null : null;
-      await updateTicket(liveTicket.id, { assignee: user });
-      console.log('✅ Ticket assignee updated:', user?.name || 'Unassigned');
+      const newAssignee = userId ? users.find(u => u.id === userId) || null : null;
+      const previousAssignee = liveTicket.assignee;
+      
+      // Update the ticket assignee
+      await updateTicket(liveTicket.id, { assignee: newAssignee });
+      
+      // Generate automatic assignment comment
+      let commentContent = '';
+      if (!previousAssignee && newAssignee) {
+        // New assignment
+        commentContent = `${currentUser.name} assigned this ticket to @${newAssignee.name}`;
+      } else if (previousAssignee && newAssignee && previousAssignee.id !== newAssignee.id) {
+        // Reassignment
+        commentContent = `${currentUser.name} reassigned this ticket from @${previousAssignee.name} to @${newAssignee.name}`;
+      } else if (previousAssignee && !newAssignee) {
+        // Unassignment
+        commentContent = `${currentUser.name} unassigned this ticket from @${previousAssignee.name}`;
+      }
+      
+      // Add the automatic comment if there was a change
+      if (commentContent) {
+        const assignmentComment: Comment = {
+          id: `assignment-comment-${Date.now()}`,
+          content: commentContent,
+          author: currentUser,
+          isInternal: false,
+          type: 'comment',
+          attachments: [],
+          replies: [],
+          createdAt: new Date()
+        };
+        
+        await addComment(liveTicket.id, assignmentComment);
+        console.log('✅ Assignment comment added:', commentContent);
+      }
+      
+      console.log('✅ Ticket assignee updated:', newAssignee?.name || 'Unassigned');
     } catch (error) {
       console.error('❌ Failed to update ticket assignee:', error);
     }
@@ -598,18 +632,38 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
               <UserIcon className="w-4 h-4 mr-2" />
               Assignee
             </h3>
+            
+            {/* Current Assignee Display */}
+            {liveTicket.assignee && (
+              <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                    <UserIcon className="w-4 h-4 text-white" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-blue-900">{liveTicket.assignee.name}</div>
+                    <div className="text-xs text-blue-700">{liveTicket.assignee.role} • {liveTicket.assignee.department.name}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Reassignment Dropdown */}
             <div className="relative">
               <select
                 value={liveTicket.assignee?.id || ''}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
                 className="w-full appearance-none border border-slate-200/60 rounded-xl px-4 py-3 pr-10 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-300 bg-white/80 hover:bg-white"
               >
-                <option value="">Unassigned</option>
+                <option value="">
+                  {liveTicket.assignee ? 'Unassign ticket' : 'Select assignee'}
+                </option>
                 {usersByDepartment.map(({ department, users: deptUsers }) => (
-                  <optgroup key={department.id} label={department.name}>
+                  <optgroup key={department.id} label={`${department.name} Department`}>
                     {deptUsers.map(user => (
                       <option key={user.id} value={user.id}>
                         {user.name} ({user.role})
+                        {user.id === liveTicket.assignee?.id ? ' - Currently Assigned' : ''}
                       </option>
                     ))}
                   </optgroup>
@@ -617,6 +671,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
               </select>
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             </div>
+            
+            {!liveTicket.assignee && (
+              <div className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-xl">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                  <span className="text-xs text-amber-700 font-medium">This ticket is unassigned</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Department */}
