@@ -228,15 +228,16 @@ class SupabaseService {
     console.log('✅ Ticket deleted from Supabase:', ticketId);
   }
 
-  async loadTickets(): Promise<Ticket[]> {
+  async loadTickets(limit = 50, offset = 0): Promise<Ticket[]> {
     const { data, error } = await supabase
       .from(TABLES.TICKETS)
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
-    console.log('✅ Loaded tickets from Supabase:', data?.length || 0);
+    console.log(`✅ Loaded tickets from Supabase: ${data?.length || 0} (limit: ${limit}, offset: ${offset})`);
     return (data || []).map(this.mapDatabaseTicketToTicket);
   }
 

@@ -34,8 +34,9 @@ interface DataContextType {
   // Statistics
   getStorageStats: () => { used: number; available: number; percentage: number };
   
-  // Loading state
+  // Loading states
   isLoading: boolean;
+  ticketsLoading: boolean;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -51,46 +52,41 @@ export const useData = () => {
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Start with false for immediate UI
+  const [ticketsLoading, setTicketsLoading] = useState(true);
 
-  // Load initial data from Supabase
+  // Progressive data loading for better UX
   useEffect(() => {
     const loadInitialData = async () => {
-      console.log('🔄 Loading data from Supabase...');
+      console.log('🚀 Starting progressive data load...');
       
       try {
-        // Test connection first
-        const isConnected = await supabaseService.testConnection();
-        if (!isConnected) {
-          throw new Error('Failed to connect to Supabase');
-        }
-
-        const [storedTickets, storedUsers] = await Promise.all([
-          supabaseService.loadTickets(),
-          supabaseService.loadUsers()
-        ]);
+        // Load users first (usually smaller dataset and needed for UI)
+        console.log('📥 Loading users...');
+        const storedUsers = await supabaseService.loadUsers();
+        setUsers(storedUsers);
+        console.log('✅ Users loaded:', storedUsers.length);
         
-        // Load tickets without comments first for faster initial load
-        // Comments will be loaded on-demand when tickets are opened
-        const ticketsWithComments = storedTickets.map(ticket => ({
+        // Load tickets in background with pagination for better performance
+        console.log('📥 Loading recent tickets (first 25)...');
+        const storedTickets = await supabaseService.loadTickets(25, 0);
+        
+        // Process tickets without comments for performance
+        const ticketsWithoutComments = storedTickets.map(ticket => ({
           ...ticket,
-          comments: [] // Empty comments array, will be loaded when ticket is opened
+          comments: [] // Comments loaded on-demand
         }));
         
-        setTickets(ticketsWithComments);
-        setUsers(storedUsers);
+        setTickets(ticketsWithoutComments);
+        setTicketsLoading(false);
+        console.log('✅ Tickets loaded:', ticketsWithoutComments.length);
         
-        console.log('✅ Cloud data loaded:', {
-          tickets: ticketsWithComments.length,
-          users: storedUsers.length
-        });
       } catch (error) {
-        console.error('❌ Failed to load cloud data:', error);
-        // Fallback to empty state - don't break the app
+        console.error('❌ Failed to load data:', error);
+        // Still show UI with empty state
         setTickets([]);
         setUsers([]);
-      } finally {
-        setIsLoading(false);
+        setTicketsLoading(false);
       }
     };
 
@@ -376,6 +372,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     tickets,
     users,
     isLoading,
+    ticketsLoading,
     
     // Ticket operations
     addTicket,

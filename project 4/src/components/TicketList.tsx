@@ -6,6 +6,7 @@ import { NewTicketModal } from './NewTicketModal';
 import { BulkActionsBar } from './BulkActionsBar';
 import { AdvancedFilterPanel } from './AdvancedFilterPanel';
 import { TicketCard } from './TicketCard';
+import { TicketSkeleton } from './TicketSkeleton';
 import { useData } from '../contexts/DataContext';
 import { 
   Plus, 
@@ -42,7 +43,7 @@ export const TicketList: React.FC<TicketListProps> = ({
   selectedTicketId,
   searchQuery = ''
 }) => {
-  const { tickets, addTicket, isLoading } = useData();
+  const { tickets, addTicket, isLoading, ticketsLoading } = useData();
   const { authState } = useAuth();
   const currentUser = authState.user;
   const [filters, setFilters] = useState<AdvancedFilters>({});
@@ -624,63 +625,46 @@ export const TicketList: React.FC<TicketListProps> = ({
             ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' 
             : 'space-y-4'
         }`}>
-          {filteredAndSortedTickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              viewMode={viewMode}
-              isSelected={selectedTickets.includes(ticket.id)}
-              onSelect={() => {
-                setSelectedTickets(prev => 
-                  prev.includes(ticket.id) 
-                    ? prev.filter(id => id !== ticket.id)
-                    : [...prev, ticket.id]
-                );
-              }}
-              onClick={() => onTicketSelect(ticket)}
-              isHighlighted={selectedTicketId === ticket.id}
-            />
-          ))}
-        </div>
-
-        {/* Empty State */}
-        {filteredAndSortedTickets.length === 0 && (
-          <div className="text-center py-16">
-            <div className="relative">
-              <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-200 rounded-3xl mx-auto mb-6 flex items-center justify-center">
-                <Search className="w-10 h-10 text-slate-400" />
-              </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full animate-ping"></div>
+          {ticketsLoading ? (
+            <div className={viewMode === 'grid' ? 'col-span-full' : ''}>
+              <TicketSkeleton />
             </div>
-            <h3 className="text-2xl font-semibold text-slate-900 mb-3">No tickets found</h3>
-            <p className="text-slate-500 mb-8 max-w-md mx-auto">
-              {searchQuery || Object.keys(filters).length > 0
-                ? "Try adjusting your search or filters to find what you're looking for."
-                : "Create your first ticket to get started with the support system."
-              }
-            </p>
-            <div className="flex items-center justify-center space-x-4">
-              {(searchQuery || Object.keys(filters).length > 0) && (
-                <button
-                  onClick={() => {
-                    setFilters({});
-                  }}
-                  className="flex items-center space-x-2 px-6 py-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all duration-200"
-                >
-                  <X className="w-4 h-4" />
-                  <span>Clear filters</span>
-                </button>
-              )}
+          ) : filteredAndSortedTickets.length === 0 ? (
+            <div className="text-center py-12 col-span-full">
+              <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Target className="w-12 h-12 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">No tickets found</h3>
+              <p className="text-slate-500 mb-4">Create your first ticket to get started</p>
               <button
                 onClick={() => setShowNewTicketModal(true)}
-                className="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-8 py-3 rounded-xl hover:from-slate-800 hover:to-slate-700 transition-all duration-300 flex items-center space-x-2 shadow-lg hover:shadow-xl"
+                className="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-6 py-3 rounded-xl hover:from-slate-800 hover:to-slate-700 transition-all duration-300 flex items-center space-x-2 mx-auto shadow-lg hover:shadow-xl"
               >
                 <Plus className="w-5 h-5" />
-                <span className="font-semibold">Create First Ticket</span>
+                <span className="font-medium">Create Ticket</span>
               </button>
             </div>
-          </div>
-        )}
+          ) : (
+            filteredAndSortedTickets.map((ticket) => (
+              <TicketCard
+                key={ticket.id}
+                ticket={ticket}
+                viewMode={viewMode}
+                isSelected={selectedTickets.includes(ticket.id)}
+                onSelect={() => {
+                  setSelectedTickets(prev => 
+                    prev.includes(ticket.id) 
+                      ? prev.filter(id => id !== ticket.id)
+                      : [...prev, ticket.id]
+                  );
+                }}
+                onClick={() => onTicketSelect(ticket)}
+                isHighlighted={selectedTicketId === ticket.id}
+              />
+            ))
+          )}
+        </div>
+
 
         <NewTicketModal
           isOpen={showNewTicketModal}
