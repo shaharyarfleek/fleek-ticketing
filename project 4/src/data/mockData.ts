@@ -1,6 +1,6 @@
 import { Department } from '../types';
 
-// Departments with exact issue type mapping based on your requirements
+// Departments with updated issue type mapping based on your requirements
 export const departments: Department[] = [
   { 
     id: '1', 
@@ -16,6 +16,9 @@ export const departments: Department[] = [
       { name: 'Redelivery', slaHours: 48, poc: '', poc2: '' },
       { name: 'Damage in transit', slaHours: 48, poc: '', poc2: '' },
       { name: 'Order swap', slaHours: 48, poc: '', poc2: '' },
+      { name: 'Row seller issues', slaHours: 24, poc: '', poc2: '' },
+      { name: 'QC isssues', slaHours: 24, poc: '', poc2: '' },
+      { name: 'Fulfillment', slaHours: 24, poc: '', poc2: '' },
       { name: 'QC HOLD- pictures required', slaHours: 24, poc: '', poc2: '' },
       { name: 'QC HOLD- replacements available but sheet not updated', slaHours: 24, poc: '', poc2: '' },
       { name: 'QC HOLD- clarity for hold reason', slaHours: 24, poc: '', poc2: '' },
@@ -25,14 +28,20 @@ export const departments: Department[] = [
   },
   { 
     id: '2', 
-    name: 'Operations/Supply', 
+    name: 'Supply', 
     color: '#F59E0B', 
-    description: 'Combined operations and supply issues',
+    description: 'Supply chain and logistics',
     slaHours: 24,
     issueCategories: [
       { name: 'Row seller issues', slaHours: 24, poc: '', poc2: '' },
       { name: 'QC isssues', slaHours: 24, poc: '', poc2: '' },
-      { name: 'Fulfillment', slaHours: 24, poc: '', poc2: '' }
+      { name: 'Fulfillment', slaHours: 24, poc: '', poc2: '' },
+      { name: 'PQ- incorrect sizes', slaHours: 48, poc: '', poc2: '' },
+      { name: 'PQ- authenticity', slaHours: 48, poc: '', poc2: '' },
+      { name: 'PQ- grading', slaHours: 48, poc: '', poc2: '' },
+      { name: 'PQ- items donot match description', slaHours: 48, poc: '', poc2: '' },
+      { name: 'QC HOLD- Seller not responding', slaHours: 24, poc: '', poc2: '' },
+      { name: 'QC HOLD- Replacements not sent by the seller', slaHours: 24, poc: '', poc2: '' }
     ]
   },
   { 
@@ -76,37 +85,15 @@ export const departments: Department[] = [
     description: 'Marketing and growth initiatives',
     slaHours: 24,
     issueCategories: [
-      { name: 'Affiliate buyer  issues', slaHours: 24, poc: '', poc2: '' }
-    ]
-  },
-  { 
-    id: '7', 
-    name: 'Supply', 
-    color: '#F59E0B', 
-    description: 'Supply chain and logistics',
-    slaHours: 24,
-    issueCategories: [
-      { name: 'PQ- incorrect sizes', slaHours: 48, poc: '', poc2: '' },
-      { name: 'PQ- grading', slaHours: 48, poc: '', poc2: '' },
-      { name: 'PQ- items donot match description', slaHours: 48, poc: '', poc2: '' },
-      { name: 'QC HOLD- Replacements not sent by the seller', slaHours: 24, poc: '', poc2: '' }
-    ]
-  },
-  { 
-    id: '8', 
-    name: 'Supply/ Growth', 
-    color: '#EC4899', 
-    description: 'Combined supply and growth issues',
-    slaHours: 24,
-    issueCategories: [
+      { name: 'Affiliate buyer  issues', slaHours: 24, poc: '', poc2: '' },
       { name: 'PQ- authenticity', slaHours: 48, poc: '', poc2: '' }
     ]
   },
   {
-    id: '9',
-    name: 'Supply/ Seller Support',
+    id: '7',
+    name: 'Seller Support',
     color: '#DC2626',
-    description: 'Supply and seller support issues',
+    description: 'Seller support and relationship management',
     slaHours: 24,
     issueCategories: [
       { name: 'QC HOLD- Seller not responding', slaHours: 24, poc: '', poc2: '' }
