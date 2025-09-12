@@ -93,30 +93,42 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadInitialData();
   }, []);
 
-  // Real-time subscriptions to Supabase changes
+  // Real-time subscriptions to Supabase changes  
   useEffect(() => {
-    if (isLoading) return;
+    // Only setup subscriptions after initial data is loaded
+    if (ticketsLoading) return;
 
     console.log('📡 Setting up real-time subscriptions...');
     
-    // Subscribe to ticket changes
-    const ticketUnsubscribe = supabaseService.subscribeToTickets((updatedTickets) => {
-      console.log('🔄 Tickets updated from real-time subscription');
-      setTickets(updatedTickets);
-    });
+    let ticketUnsubscribe: (() => void) | null = null;
+    let userUnsubscribe: (() => void) | null = null;
 
-    // Subscribe to user changes  
-    const userUnsubscribe = supabaseService.subscribeToUsers((updatedUsers) => {
-      console.log('🔄 Users updated from real-time subscription');
-      setUsers(updatedUsers);
-    });
+    try {
+      // Subscribe to ticket changes
+      ticketUnsubscribe = supabaseService.subscribeToTickets((updatedTickets) => {
+        console.log('🔄 Tickets updated from real-time subscription:', updatedTickets.length);
+        setTickets(updatedTickets);
+      });
+
+      // Subscribe to user changes  
+      userUnsubscribe = supabaseService.subscribeToUsers((updatedUsers) => {
+        console.log('🔄 Users updated from real-time subscription:', updatedUsers.length);
+        setUsers(updatedUsers);
+      });
+    } catch (error) {
+      console.error('❌ Failed to setup real-time subscriptions:', error);
+    }
 
     return () => {
       console.log('📡 Cleaning up real-time subscriptions');
-      ticketUnsubscribe();
-      userUnsubscribe();
+      try {
+        if (ticketUnsubscribe) ticketUnsubscribe();
+        if (userUnsubscribe) userUnsubscribe();
+      } catch (error) {
+        console.error('❌ Error cleaning up subscriptions:', error);
+      }
     };
-  }, [isLoading]);
+  }, [ticketsLoading]);
 
   // Ticket management functions
   const addTicket = useCallback(async (ticket: Ticket) => {

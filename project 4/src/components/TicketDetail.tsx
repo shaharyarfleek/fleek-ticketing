@@ -41,6 +41,25 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   
   // Get the live ticket data from DataContext instead of relying on static prop
   const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
+  
+  // Safety check to prevent crashes with incomplete ticket data
+  if (!liveTicket || !liveTicket.id) {
+    console.error('❌ TicketDetail: Invalid ticket data', { ticket, liveTicket });
+    return (
+      <div className="max-w-5xl mx-auto px-8 py-8">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Ticket not found</h2>
+          <p className="text-slate-600 mb-4">The requested ticket could not be loaded.</p>
+          <button
+            onClick={onBack}
+            className="bg-slate-900 text-white px-6 py-2 rounded-xl hover:bg-slate-800 transition-colors"
+          >
+            Back to Tickets
+          </button>
+        </div>
+      </div>
+    );
+  }
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(true);
   const [commentAttachments, setCommentAttachments] = useState<Attachment[]>([]);
@@ -68,11 +87,15 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
 
   // Load comments when ticket is opened (if not already loaded)
   useEffect(() => {
-    if (liveTicket && (!liveTicket.comments || liveTicket.comments.length === 0)) {
+    if (liveTicket && liveTicket.id && (!liveTicket.comments || liveTicket.comments.length === 0)) {
       console.log('🔄 Loading comments for ticket:', liveTicket.id);
-      loadTicketComments(liveTicket.id);
+      try {
+        loadTicketComments(liveTicket.id);
+      } catch (error) {
+        console.error('❌ Failed to load ticket comments:', error);
+      }
     }
-  }, [liveTicket.id, loadTicketComments]);
+  }, [liveTicket?.id, loadTicketComments]);
 
   const handleStatusChange = async (newStatus: TicketStatus) => {
     try {

@@ -62,10 +62,13 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   useEffect(() => {
     const loadUsers = async () => {
       try {
+        console.log('🔄 NewTicketModal: Starting to load users, authState available:', !!authState, 'getAllUsers function:', !!authState.getAllUsers);
         if (authState.getAllUsers) {
           const loadedUsers = await authState.getAllUsers();
           setUsers(loadedUsers);
-          console.log('🔄 NewTicketModal: Loaded users for assignment:', loadedUsers.length);
+          console.log('🔄 NewTicketModal: Loaded users for assignment:', loadedUsers.length, loadedUsers.map(u => `${u.name} (${u.department.name})`));
+        } else {
+          console.warn('❌ NewTicketModal: getAllUsers function not available on authState');
         }
       } catch (error) {
         console.error('❌ Failed to load users for assignment:', error);
@@ -267,6 +270,16 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
       user.department.name.toLowerCase().includes(assigneeSearch.toLowerCase());
     
     return matchesDepartment && matchesSearch;
+  });
+
+  // Debug logging for user filtering
+  console.log('🔧 NewTicketModal User Filter Debug:', {
+    totalUsers: users.length,
+    selectedDepartmentId: departmentId,
+    selectedDepartmentName: departments.find(d => d.id === departmentId)?.name,
+    filteredUsersCount: filteredUsers.length,
+    filteredUserNames: filteredUsers.map(u => u.name),
+    assigneeSearch
   });
 
   // Use search results directly (no client-side filtering needed)
