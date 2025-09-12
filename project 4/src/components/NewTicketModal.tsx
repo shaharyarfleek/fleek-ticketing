@@ -5,6 +5,7 @@ import { Priority, Department, User, Attachment, IssueType, Currency } from '../
 import { FileUpload, AttachmentList } from './FileUpload';
 import { TagGenerator } from '../utils/tagGenerator';
 import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 import { useOrderSearch } from '../hooks/useOrderSearch';
 
 interface NewTicketModalProps {
@@ -31,6 +32,7 @@ const currencies: Currency[] = ['GBP', 'USD', 'EUR', 'CAD', 'AUD', 'JPY', 'CNY',
 
 export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const { authState } = useAuth();
+  const { users: dataUsers } = useData();
   const { orders, suggestions, loading: ordersLoading, error: ordersError, searchStats, cacheInfo, searchOrders, searchOrdersImmediate, clearSearch, isTyping } = useOrderSearch();
   
   const [title, setTitle] = useState('');
@@ -55,28 +57,13 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   const [generatedTags, setGeneratedTags] = useState<string[]>([]);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
   
-  // State for users loaded from auth context
-  const [users, setUsers] = useState<any[]>([]);
-
-  // Load users from auth context
+  // Use users directly from DataContext instead of loading separately
+  const users = dataUsers;
+  
+  // Debug users from DataContext
   useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        console.log('🔄 NewTicketModal: Starting to load users, authState available:', !!authState, 'getAllUsers function:', !!authState.getAllUsers);
-        if (authState.getAllUsers) {
-          const loadedUsers = await authState.getAllUsers();
-          setUsers(loadedUsers);
-          console.log('🔄 NewTicketModal: Loaded users for assignment:', loadedUsers.length, loadedUsers.map(u => `${u.name} (${u.department.name})`));
-        } else {
-          console.warn('❌ NewTicketModal: getAllUsers function not available on authState');
-        }
-      } catch (error) {
-        console.error('❌ Failed to load users for assignment:', error);
-      }
-    };
-
-    loadUsers();
-  }, [authState]);
+    console.log('🔄 NewTicketModal: Users from DataContext:', users.length, users.map(u => `${u.name} (${u.department.name})`));
+  }, [users]);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
   const orderDropdownRef = useRef<HTMLDivElement>(null);

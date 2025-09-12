@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { User } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { useData } from '../contexts/DataContext';
 
 interface MentionInputProps {
   value: string;
@@ -19,7 +19,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   rows = 3,
   onSubmit
 }) => {
-  const authContext = useAuth();
+  const { users: dataUsers } = useData();
   const [users, setUsers] = useState<User[]>([]);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionQuery, setMentionQuery] = useState('');
@@ -27,36 +27,11 @@ export const MentionInput: React.FC<MentionInputProps> = ({
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load users for mentions on component mount
+  // Use users directly from DataContext
   useEffect(() => {
-    const loadUsers = async () => {
-      console.log('🔧 Attempting to load users, authContext:', !!authContext, 'getAllUsers available:', !!authContext.getAllUsers);
-      try {
-        if (authContext.getAllUsers) {
-          console.log('🔧 Calling getAllUsers...');
-          const loadedUsers = await authContext.getAllUsers();
-          console.log('🔧 Raw loaded users from getAllUsers:', loadedUsers);
-          // Convert AuthUser to User format
-          const convertedUsers: User[] = loadedUsers.map(authUser => ({
-            id: authUser.id,
-            name: authUser.name,
-            email: authUser.email,
-            role: authUser.role as any,
-            department: authUser.department,
-            isBlocked: authUser.isBlocked
-          }));
-          setUsers(convertedUsers);
-          console.log('🔧 MentionInput - Loaded users for mentions:', convertedUsers.length, convertedUsers.map(u => u.name));
-        } else {
-          console.error('❌ getAllUsers function not available in authContext');
-        }
-      } catch (error) {
-        console.error('❌ Failed to load users for mentions:', error);
-      }
-    };
-
-    loadUsers();
-  }, [authContext]);
+    setUsers(dataUsers);
+    console.log('🔧 MentionInput - Users from DataContext:', dataUsers.length, dataUsers.map(u => u.name));
+  }, [dataUsers]);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
