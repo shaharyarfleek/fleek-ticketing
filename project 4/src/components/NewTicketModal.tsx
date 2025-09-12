@@ -62,7 +62,12 @@ export const NewTicketModal: React.FC<NewTicketModalProps> = ({ isOpen, onClose,
   
   // Debug users from DataContext
   useEffect(() => {
-    console.log('🔄 NewTicketModal: Users from DataContext:', users.length, users.map(u => `${u.name} (${u.department.name})`));
+    console.log('🔄 NewTicketModal: Users from DataContext:', {
+      userCount: users.length,
+      usersData: users,
+      userNames: users.map(u => u.name),
+      userDepartments: users.map(u => u.department?.name || 'No Dept')
+    });
   }, [users]);
   
   const dropdownRef = useRef<HTMLDivElement>(null);

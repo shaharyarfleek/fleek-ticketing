@@ -53,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 We encountered an unexpected error. Don't worry, your data is safe.
               </p>
 
-              {process.env.NODE_ENV === 'development' && this.state.error && (
+              {this.state.error && (
                 <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-left">
                   <h3 className="text-sm font-semibold text-red-900 mb-2">Error Details:</h3>
                   <pre className="text-xs text-red-700 overflow-auto max-h-32">

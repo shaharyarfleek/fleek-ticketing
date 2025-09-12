@@ -36,30 +36,37 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   ticket, 
   onBack
 }) => {
-  const { tickets, updateTicket, addComment, addReply, setReminder, loadTicketComments, users } = useData();
-  const { authState } = useAuth();
+  console.log('🔧 TicketDetail: Starting render with ticket:', ticket?.id, ticket?.title);
   
-  // Get the live ticket data from DataContext instead of relying on static prop
-  const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
-  
-  // Safety check to prevent crashes with incomplete ticket data
-  if (!liveTicket || !liveTicket.id) {
-    console.error('❌ TicketDetail: Invalid ticket data', { ticket, liveTicket });
-    return (
-      <div className="max-w-5xl mx-auto px-8 py-8">
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold text-slate-900 mb-2">Ticket not found</h2>
-          <p className="text-slate-600 mb-4">The requested ticket could not be loaded.</p>
-          <button
-            onClick={onBack}
-            className="bg-slate-900 text-white px-6 py-2 rounded-xl hover:bg-slate-800 transition-colors"
-          >
-            Back to Tickets
-          </button>
+  try {
+    const { tickets, updateTicket, addComment, addReply, setReminder, loadTicketComments, users } = useData();
+    const { authState } = useAuth();
+    
+    console.log('🔧 TicketDetail: DataContext loaded, tickets count:', tickets.length, 'users count:', users.length);
+    
+    // Get the live ticket data from DataContext instead of relying on static prop
+    const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
+    
+    console.log('🔧 TicketDetail: Live ticket found:', !!liveTicket, 'ID:', liveTicket?.id);
+    
+    // Safety check to prevent crashes with incomplete ticket data
+    if (!liveTicket || !liveTicket.id) {
+      console.error('❌ TicketDetail: Invalid ticket data', { ticket, liveTicket, ticketsInContext: tickets.length });
+      return (
+        <div className="max-w-5xl mx-auto px-8 py-8">
+          <div className="text-center py-12">
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">Ticket not found</h2>
+            <p className="text-slate-600 mb-4">The requested ticket could not be loaded.</p>
+            <button
+              onClick={onBack}
+              className="bg-slate-900 text-white px-6 py-2 rounded-xl hover:bg-slate-800 transition-colors"
+            >
+              Back to Tickets
+            </button>
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(true);
   const [commentAttachments, setCommentAttachments] = useState<Attachment[]>([]);
@@ -684,4 +691,23 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
       />
     </div>
   );
+  } catch (error) {
+    console.error('❌ TicketDetail: Caught error during render:', error);
+    return (
+      <div className="max-w-5xl mx-auto px-8 py-8">
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Error loading ticket</h2>
+          <p className="text-slate-600 mb-4">
+            There was an error loading the ticket details: {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+          <button
+            onClick={onBack}
+            className="bg-slate-900 text-white px-6 py-2 rounded-xl hover:bg-slate-800 transition-colors"
+          >
+            Back to Tickets
+          </button>
+        </div>
+      </div>
+    );
+  }
 };

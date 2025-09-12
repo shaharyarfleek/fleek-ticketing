@@ -66,6 +66,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const storedUsers = await supabaseService.loadUsers();
         setUsers(storedUsers);
         console.log('✅ Users loaded:', storedUsers.length);
+        console.log('🔧 DataContext: Loaded users data:', storedUsers.map(u => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          department: u.department?.name || 'No Department'
+        })));
         
         // Load tickets in background with pagination for better performance
         console.log('📥 Loading recent tickets (first 25)...');
