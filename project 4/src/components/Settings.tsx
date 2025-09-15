@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings as SettingsIcon, 
   User, 
@@ -48,6 +48,19 @@ interface AuthUser {
 
 export const Settings: React.FC<SettingsProps> = () => {
   const { authState, updateProfile, updateUserProfile } = useAuth();
+  
+  // Early return if authState is not ready
+  if (!authState) {
+    return (
+      <div className="max-w-7xl mx-auto px-8 py-8">
+        <div className="text-center py-12">
+          <Loader2 className="w-8 h-8 text-blue-500 mx-auto mb-4 animate-spin" />
+          <h2 className="text-xl font-semibold text-slate-900 mb-2">Loading Settings...</h2>
+          <p className="text-slate-600">Please wait while we load your settings</p>
+        </div>
+      </div>
+    );
+  }
   const [activeTab, setActiveTab] = useState('profile');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifications, setNotifications] = useState({
@@ -112,6 +125,8 @@ export const Settings: React.FC<SettingsProps> = () => {
         } finally {
           setUsersLoading(false);
         }
+      } else if (activeTab !== 'users') {
+        setUsersLoading(false);
       }
     };
 
@@ -585,9 +600,13 @@ export const Settings: React.FC<SettingsProps> = () => {
       allUsers = [];
     }
 
-    // Debug info
-    console.log('All users from localStorage:', allUsers);
-    console.log('Current user:', authState.user);
+    // User management debug info
+    console.log('🔧 User Management Debug:', {
+      userRole: authState.user?.role,
+      usersCount: allUsers.length,
+      getAllUsersAvailable: !!authState.getAllUsers,
+      updateUserProfileAvailable: !!updateUserProfile
+    });
 
     const refreshUsers = async () => {
       if (authState.user?.role === 'admin' && authState.getAllUsers) {
@@ -716,15 +735,16 @@ export const Settings: React.FC<SettingsProps> = () => {
         
         if (updateUserProfile) {
           await updateUserProfile(selectedUser.id, updateData);
+          setShowEditModal(false);
+          setSelectedUser(null);
+          // Refresh users list
+          await refreshUsers();
+        } else {
+          throw new Error('Update function not available. Please ensure you are logged in as an admin.');
         }
-        
-        setShowEditModal(false);
-        setSelectedUser(null);
-        // Refresh the page to reload users
-        setTimeout(() => window.location.reload(), 500);
       } catch (error) {
         console.error('Failed to update user:', error);
-        alert('Failed to update user. Please try again.');
+        alert(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         setIsLoading(false);
       }
