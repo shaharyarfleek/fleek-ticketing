@@ -114,19 +114,30 @@ export const Settings: React.FC<SettingsProps> = () => {
   // Load users when component mounts or when activeTab changes to 'users'
   useEffect(() => {
     const loadUsers = async () => {
+      console.log('🔧 Settings: loadUsers effect triggered', {
+        userRole: authState.user?.role,
+        getAllUsersAvailable: !!authState.getAllUsers,
+        activeTab,
+        isAdmin: authState.user?.role === 'admin'
+      });
+      
       if (authState.user?.role === 'admin' && authState.getAllUsers && activeTab === 'users') {
+        console.log('🔄 Settings: Starting to load users...');
         setUsersLoading(true);
         try {
           const users = await authState.getAllUsers();
+          console.log('✅ Settings: Users loaded successfully:', users.length, users);
           setAllUsers(users);
         } catch (error) {
-          console.error('Failed to load users:', error);
+          console.error('❌ Settings: Failed to load users:', error);
           setAllUsers([]);
         } finally {
           setUsersLoading(false);
         }
       } else if (activeTab !== 'users') {
         setUsersLoading(false);
+      } else {
+        console.log('⚠️ Settings: Not loading users because conditions not met');
       }
     };
 

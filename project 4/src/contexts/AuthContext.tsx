@@ -157,10 +157,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isBlocked: supabaseUser.isBlocked,
       };
 
-      // Store in localStorage if remember me is checked
-      if (credentials.rememberMe) {
-        localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(authUser));
-      }
+      // Always store in localStorage for session management
+      localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(authUser));
 
       dispatch({ type: 'LOGIN_SUCCESS', payload: authUser });
     } catch (error) {

@@ -477,9 +477,21 @@ class SupabaseService {
     };
   }
 
-  // Ensure admin user exists
+  // Ensure admin user exists and create sample users if database is empty
   async ensureAdminUserExists(): Promise<void> {
     try {
+      // Check how many users exist
+      const { data: allUsers, error: countError } = await supabase
+        .from(TABLES.USERS)
+        .select('id');
+
+      if (countError) {
+        console.error('❌ Error checking user count:', countError);
+        return;
+      }
+
+      console.log('🔧 Current user count in database:', allUsers?.length || 0);
+
       // Check if admin user already exists
       const { data: existingAdmin, error: checkError } = await supabase
         .from(TABLES.USERS)
@@ -511,6 +523,49 @@ class SupabaseService {
           console.error('❌ Failed to create admin user:', createError);
         } else {
           console.log('✅ Admin user created successfully');
+        }
+      } else {
+        console.log('✅ Admin user already exists');
+      }
+
+      // If database is mostly empty, create sample users for testing
+      if ((allUsers?.length || 0) < 3) {
+        console.log('🔧 Creating sample users for testing...');
+        const sampleUsers: User[] = [
+          {
+            id: 'b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+            name: 'John Smith',
+            email: 'john@fleek.com',
+            role: 'agent',
+            department: { id: '1', name: 'Operations' },
+            isBlocked: false,
+            is_active: true
+          },
+          {
+            id: 'c2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+            name: 'Jane Doe',
+            email: 'jane@fleek.com',
+            role: 'senior_agent',
+            department: { id: '2', name: 'Marketing' },
+            isBlocked: false,
+            is_active: true
+          }
+        ];
+
+        for (const user of sampleUsers) {
+          try {
+            const { error } = await supabase
+              .from(TABLES.USERS)
+              .insert([this.mapUserToDatabaseUser(user)]);
+            
+            if (error) {
+              console.error(`❌ Failed to create sample user ${user.name}:`, error);
+            } else {
+              console.log(`✅ Sample user created: ${user.name}`);
+            }
+          } catch (err) {
+            console.error(`❌ Error creating sample user ${user.name}:`, err);
+          }
         }
       }
     } catch (error) {
