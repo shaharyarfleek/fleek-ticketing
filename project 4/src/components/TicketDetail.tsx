@@ -286,14 +286,22 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
     });
   };
 
+  // Debug user loading
+  console.log('🔧 TicketDetail User Debug:', {
+    totalUsersFromContext: users.length,
+    usersData: users,
+    ticketDepartment: liveTicket.department,
+    ticketDepartmentId: liveTicket.department?.id
+  });
+
   // Filter users to show only those from the ticket's department
-  const departmentUsers = users.filter(user => user.department.id === liveTicket.department.id);
+  const departmentUsers = users.filter(user => {
+    const matches = user.department?.id === liveTicket.department?.id;
+    console.log(`🔧 User ${user.name} (${user.department?.name}) matches ticket dept ${liveTicket.department?.name}:`, matches);
+    return matches;
+  });
   
-  // Group users by department for assignee dropdown (only the ticket's department)
-  const usersByDepartment = [{
-    department: liveTicket.department,
-    users: departmentUsers
-  }];
+  console.log('🔧 Filtered department users:', departmentUsers.length, departmentUsers.map(u => u.name));
 
   return (
     <div className="max-w-5xl mx-auto px-8 py-8">
@@ -658,15 +666,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
                 <option value="">
                   {liveTicket.assignee ? 'Unassign ticket' : 'Select assignee'}
                 </option>
-                {usersByDepartment.map(({ department, users: deptUsers }) => (
-                  <optgroup key={department.id} label={`${department.name} Department`}>
-                    {deptUsers.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.role})
-                        {user.id === liveTicket.assignee?.id ? ' - Currently Assigned' : ''}
-                      </option>
-                    ))}
-                  </optgroup>
+                {departmentUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.role})
+                    {user.id === liveTicket.assignee?.id ? ' - Currently Assigned' : ''}
+                  </option>
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
