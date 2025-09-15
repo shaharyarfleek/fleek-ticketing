@@ -3,7 +3,7 @@ export interface AuthUser {
   username: string;
   email: string;
   name: string;
-  role: 'super_admin' | 'manager' | 'agent';
+  role: 'super_admin' | 'admin' | 'manager' | 'agent' | 'senior_agent' | 'team_lead';
   department?: {
     id: string;
     name: string;
@@ -88,14 +88,9 @@ export interface AuthContextType {
     confirmPassword: string;
   }) => Promise<void>;
   updateProfile: (data: Partial<AuthUser>) => Promise<void>;
-  // Admin functions
+  // User functions (available to all authenticated users)
   getAllUsers?: () => Promise<AuthUser[]>;
-  blockUser?: (userId: string, reason: string) => Promise<void>;
-  unblockUser?: (userId: string) => Promise<void>;
-  deleteUser?: (userId: string) => Promise<void>;
-  updateUserProfile?: (userId: string, data: Partial<AuthUser>) => Promise<void>;
-  // Admin functions
-  getAllUsers?: () => AuthUser[];
+  // Admin functions (only available to admin users)
   blockUser?: (userId: string, reason: string) => Promise<void>;
   unblockUser?: (userId: string) => Promise<void>;
   deleteUser?: (userId: string) => Promise<void>;

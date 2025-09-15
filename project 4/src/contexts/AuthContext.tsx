@@ -452,6 +452,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('✅ Password updated for user:', user.email);
   };
 
+  const isAdmin = authState.user?.role === 'admin' || authState.user?.role === 'super_admin';
+  
   const value: AuthContextType = {
     authState,
     login,
@@ -464,24 +466,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Available to all authenticated users (for mentions)
     getAllUsers,
     
-    // Admin functions (only available to admin)
-    ...(authState.user?.role === 'admin' && {
-      blockUser,
-      unblockUser,
-      deleteUser,
-      updateUserProfile,
-    }),
-    // Admin functions (only available to super_admin)
-    ...(authState.user?.role === 'super_admin' && {
-      blockUser,
-      unblockUser,
-      deleteUser,
-      updateUserProfile,
-    }),
+    // Admin functions (always defined but with role check inside)
+    blockUser: isAdmin ? blockUser : undefined,
+    unblockUser: isAdmin ? unblockUser : undefined,
+    deleteUser: isAdmin ? deleteUser : undefined,
+    updateUserProfile: isAdmin ? updateUserProfile : undefined,
   };
 
-  // Debug log to verify getAllUsers is in the value object
-  console.log('🔧 AuthContext value object - getAllUsers present:', !!value.getAllUsers);
+  // Debug log to verify functions are available
+  console.log('🔧 AuthContext value object:', {
+    getAllUsersPresent: !!value.getAllUsers,
+    userRole: authState.user?.role,
+    isAdmin,
+    blockUserPresent: !!value.blockUser,
+    updateUserProfilePresent: !!value.updateUserProfile,
+    authStatePresent: !!authState.user
+  });
 
   return (
     <AuthContext.Provider value={value}>
