@@ -477,14 +477,66 @@ class SupabaseService {
     };
   }
 
+  // Ensure admin user exists
+  async ensureAdminUserExists(): Promise<void> {
+    try {
+      // Check if admin user already exists
+      const { data: existingAdmin, error: checkError } = await supabase
+        .from(TABLES.USERS)
+        .select('*')
+        .eq('email', 'admin@fleek.com')
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        throw checkError;
+      }
+
+      // If admin doesn't exist, create it
+      if (!existingAdmin) {
+        const adminUser: User = {
+          id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // Fixed admin UUID
+          name: 'System Administrator',
+          email: 'admin@fleek.com',
+          role: 'admin',
+          department: { id: '1', name: 'Operations' },
+          isBlocked: false,
+          is_active: true
+        };
+
+        const { error: createError } = await supabase
+          .from(TABLES.USERS)
+          .insert([this.mapUserToDatabaseUser(adminUser)]);
+
+        if (createError) {
+          console.error('❌ Failed to create admin user:', createError);
+        } else {
+          console.log('✅ Admin user created successfully');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error ensuring admin user exists:', error);
+    }
+  }
+
   // Authentication operations
   async authenticateUser(username: string, password: string): Promise<User | null> {
     try {
+      // Ensure admin user exists before authentication
+      await this.ensureAdminUserExists();
+      
+      // Handle special case for admin login
+      let searchQuery = `email.ilike.%${username}%,name.ilike.%${username}%`;
+      
+      // If username is 'admin', also search for admin@fleek.com specifically
+      if (username.toLowerCase() === 'admin') {
+        searchQuery = `email.eq.admin@fleek.com,name.ilike.%admin%`;
+      }
+      
       // Find user by email or name (since we don't have username column)
       const { data: users, error } = await supabase
         .from(TABLES.USERS)
         .select('*')
-        .or(`email.ilike.%${username}%,name.ilike.%${username}%`);
+        .or(searchQuery);
 
       if (error) throw error;
 

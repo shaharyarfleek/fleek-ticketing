@@ -47,7 +47,7 @@ interface AuthUser {
 }
 
 export const Settings: React.FC<SettingsProps> = () => {
-  const { authState, updateProfile } = useAuth();
+  const { authState, updateProfile, updateUserProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifications, setNotifications] = useState({
@@ -89,6 +89,8 @@ export const Settings: React.FC<SettingsProps> = () => {
   const [showBlockModal, setShowBlockModal] = useState(false);
   const [blockReason, setBlockReason] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [allUsers, setAllUsers] = useState<AuthUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
   const [editUserData, setEditUserData] = useState({
     name: '',
     email: '',
@@ -96,18 +98,40 @@ export const Settings: React.FC<SettingsProps> = () => {
     department: ''
   });
 
-  // Get all users from the auth context
-  const allUsers = authState.user?.role === 'admin' && authState.getAllUsers ? authState.getAllUsers() : [];
+  // Load users when component mounts or when activeTab changes to 'users'
+  useEffect(() => {
+    const loadUsers = async () => {
+      if (authState.user?.role === 'admin' && authState.getAllUsers && activeTab === 'users') {
+        setUsersLoading(true);
+        try {
+          const users = await authState.getAllUsers();
+          setAllUsers(users);
+        } catch (error) {
+          console.error('Failed to load users:', error);
+          setAllUsers([]);
+        } finally {
+          setUsersLoading(false);
+        }
+      }
+    };
 
-  const tabs = [
+    loadUsers();
+  }, [authState.user?.role, authState.getAllUsers, activeTab]);
+
+  // Only show User Management tab for admin users
+  const baseTabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'workflow', label: 'Workflow', icon: Zap },
     { id: 'departments', label: 'Departments', icon: Building },
     { id: 'data', label: 'Data & Export', icon: Download },
-    { id: 'users', label: 'User Management', icon: Users },
   ];
+
+  // Add User Management tab only for admin users
+  const tabs = authState.user?.role === 'admin' 
+    ? [...baseTabs, { id: 'users', label: 'User Management', icon: Users }]
+    : baseTabs;
 
   const handleSaveProfile = async () => {
     try {
@@ -565,8 +589,18 @@ export const Settings: React.FC<SettingsProps> = () => {
     console.log('All users from localStorage:', allUsers);
     console.log('Current user:', authState.user);
 
-    const refreshUsers = () => {
-      window.location.reload(); // Simple refresh to reload users
+    const refreshUsers = async () => {
+      if (authState.user?.role === 'admin' && authState.getAllUsers) {
+        setUsersLoading(true);
+        try {
+          const users = await authState.getAllUsers();
+          setAllUsers(users);
+        } catch (error) {
+          console.error('Failed to refresh users:', error);
+        } finally {
+          setUsersLoading(false);
+        }
+      }
     };
 
     // Check if current user is admin (allow access for debugging)
@@ -666,6 +700,35 @@ export const Settings: React.FC<SettingsProps> = () => {
       });
       setShowEditModal(true);
     };
+
+    const handleSaveEditUser = async () => {
+      if (!selectedUser) return;
+      
+      setIsLoading(true);
+      try {
+        const selectedDepartment = departments.find(d => d.id === editUserData.department);
+        const updateData = {
+          name: editUserData.name,
+          email: editUserData.email,
+          role: editUserData.role,
+          department: selectedDepartment || null
+        };
+        
+        if (updateUserProfile) {
+          await updateUserProfile(selectedUser.id, updateData);
+        }
+        
+        setShowEditModal(false);
+        setSelectedUser(null);
+        // Refresh the page to reload users
+        setTimeout(() => window.location.reload(), 500);
+      } catch (error) {
+        console.error('Failed to update user:', error);
+        alert('Failed to update user. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
     return (
       <div className="space-y-6">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8">
@@ -680,16 +743,23 @@ export const Settings: React.FC<SettingsProps> = () => {
               </span>
               <button
                 onClick={refreshUsers}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
+                disabled={usersLoading}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <RefreshCw className="w-4 h-4" />
-                <span>Refresh</span>
+                <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin' : ''}`} />
+                <span>{usersLoading ? 'Loading...' : 'Refresh'}</span>
               </button>
             </div>
           </div>
           
           <div className="space-y-4">
-            {allUsers.length === 0 ? (
+            {usersLoading ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-8 h-8 text-blue-500 mx-auto mb-4 animate-spin" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Loading Users...</h3>
+                <p className="text-slate-500">Fetching user data from the database</p>
+              </div>
+            ) : allUsers.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">No Users Found</h3>
@@ -736,38 +806,53 @@ export const Settings: React.FC<SettingsProps> = () => {
                     )}
                   </div>
                   
-                  {user.role !== 'super_admin' && user.role !== 'admin' && (
-                    <div className="flex items-center space-x-2">
-                      {user.isBlocked ? (
+                  <div className="flex items-center space-x-2">
+                    {/* Edit button for all users */}
+                    <button
+                      onClick={() => handleEditUser(user)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                      disabled={isLoading}
+                      title="Edit user"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    
+                    {user.role !== 'super_admin' && user.role !== 'admin' && (
+                      <>
+                        {user.isBlocked ? (
+                          <button
+                            onClick={() => handleUnblockUser(user)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
+                            disabled={isLoading}
+                            title="Unblock user"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowBlockModal(true);
+                            }}
+                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors duration-200"
+                            disabled={isLoading}
+                            title="Block user"
+                          >
+                            <Shield className="w-4 h-4" />
+                          </button>
+                        )}
+                        
                         <button
-                          onClick={() => handleUnblockUser(user)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200"
+                          onClick={() => handleDeleteUser(user)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
                           disabled={isLoading}
+                          title="Delete user"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setSelectedUser(user);
-                            setShowBlockModal(true);
-                          }}
-                          className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors duration-200"
-                          disabled={isLoading}
-                        >
-                          <Shield className="w-4 h-4" />
-                        </button>
-                      )}
-                      
-                      <button
-                        onClick={() => handleDeleteUser(user)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                        disabled={isLoading}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -792,7 +877,8 @@ export const Settings: React.FC<SettingsProps> = () => {
       case 'data':
         return renderDataExport();
       case 'users':
-        return renderUserManagement();
+        // Double-check admin access before rendering user management
+        return authState.user?.role === 'admin' ? renderUserManagement() : null;
       default:
         return renderProfileSettings();
     }
@@ -836,6 +922,185 @@ export const Settings: React.FC<SettingsProps> = () => {
           {renderTabContent()}
         </div>
       </div>
+      
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity bg-slate-500 bg-opacity-75" onClick={() => setShowEditModal(false)} />
+            
+            <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-slate-900 flex items-center">
+                  <Edit3 className="w-5 h-5 mr-2" />
+                  Edit User
+                </h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={editUserData.name}
+                    onChange={(e) => setEditUserData({...editUserData, name: e.target.value})}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200"
+                    placeholder="Enter full name"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={editUserData.email}
+                    onChange={(e) => setEditUserData({...editUserData, email: e.target.value})}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200"
+                    placeholder="Enter email address"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Role</label>
+                  <select
+                    value={editUserData.role}
+                    onChange={(e) => setEditUserData({...editUserData, role: e.target.value})}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200"
+                  >
+                    <option value="agent">Agent</option>
+                    <option value="senior_agent">Senior Agent</option>
+                    <option value="team_lead">Team Lead</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Department</label>
+                  <select
+                    value={editUserData.department}
+                    onChange={(e) => setEditUserData({...editUserData, department: e.target.value})}
+                    className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/30 transition-all duration-200"
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map(dept => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {selectedUser.isBlocked && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <p className="text-sm text-red-700">
+                      <strong>User Status:</strong> This user is currently blocked.
+                      {selectedUser.blockedReason && (
+                        <><br /><strong>Reason:</strong> {selectedUser.blockedReason}</>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center justify-end space-x-3 mt-6 pt-4 border-t border-slate-200">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEditUser}
+                  disabled={isLoading || !editUserData.name.trim() || !editUserData.email.trim()}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Block User Modal */}
+      {showBlockModal && selectedUser && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity bg-slate-500 bg-opacity-75" onClick={() => setShowBlockModal(false)} />
+            
+            <div className="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white shadow-xl rounded-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-slate-900 flex items-center">
+                  <Shield className="w-5 h-5 mr-2 text-orange-600" />
+                  Block User
+                </h3>
+                <button
+                  onClick={() => setShowBlockModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-sm text-slate-600 mb-4">
+                  You are about to block <strong>{selectedUser.name}</strong>. Please provide a reason:
+                </p>
+                
+                <textarea
+                  value={blockReason}
+                  onChange={(e) => setBlockReason(e.target.value)}
+                  placeholder="Enter reason for blocking this user..."
+                  className="w-full border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/30 transition-all duration-200 h-24 resize-none"
+                />
+              </div>
+              
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+                <button
+                  onClick={() => setShowBlockModal(false)}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleBlockUser(selectedUser)}
+                  disabled={isLoading || !blockReason.trim()}
+                  className="bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-2 rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Blocking...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4" />
+                      <span>Block User</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
