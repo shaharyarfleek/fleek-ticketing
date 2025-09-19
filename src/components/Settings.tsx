@@ -604,6 +604,109 @@ export const Settings: React.FC<SettingsProps> = () => {
     </div>
   );
 
+  // User management functions at component level
+  const refreshUsers = () => {
+    // Trigger a re-render by changing activeTab
+    setActiveTab('profile');
+    setTimeout(() => setActiveTab('users'), 100);
+  };
+
+  const handleBlockUser = async (user: AuthUser) => {
+    if (!blockReason.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      if (authContext.blockUser) {
+        await authContext.blockUser(user.id, blockReason);
+        // Refresh users list after blocking
+        refreshUsers();
+      }
+      setShowBlockModal(false);
+      setBlockReason('');
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Failed to block user:', error);
+      alert(`Failed to block user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnblockUser = async (user: AuthUser) => {
+    setIsLoading(true);
+    try {
+      if (authContext.unblockUser) {
+        await authContext.unblockUser(user.id);
+        // Refresh users list after unblocking
+        refreshUsers();
+      }
+    } catch (error) {
+      console.error('Failed to unblock user:', error);
+      alert(`Failed to unblock user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: AuthUser) => {
+    if (!confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) return;
+    
+    setIsLoading(true);
+    try {
+      if (authContext.deleteUser) {
+        await authContext.deleteUser(user.id);
+        // Refresh users list after deletion
+        refreshUsers();
+      }
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      alert(`Failed to delete user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditUser = (user: AuthUser) => {
+    setSelectedUser(user);
+    setEditUserData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department?.name || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleSaveEditUser = async () => {
+    if (!selectedUser) return;
+    
+    setIsLoading(true);
+    try {
+      const selectedDepartment = departments.find(d => d.name === editUserData.department);
+      const updateData = {
+        name: editUserData.name,
+        email: editUserData.email,
+        role: editUserData.role,
+        department: selectedDepartment || null
+      };
+      
+      if (updateUserProfile) {
+        await updateUserProfile(selectedUser.id, updateData as Partial<AuthUser>);
+        setShowEditModal(false);
+        setSelectedUser(null);
+        // Refresh users list after update
+        refreshUsers();
+      } else {
+        throw new Error('Update function not available. Please ensure you are logged in as an admin.');
+      }
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      alert(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const renderUserManagement = () => {
     // User management debug info
     console.log('🔧 User Management Debug:', {
@@ -612,12 +715,6 @@ export const Settings: React.FC<SettingsProps> = () => {
       dataContextUsersCount: dataContextUsers.length,
       updateUserProfileAvailable: !!updateUserProfile
     });
-
-    const refreshUsers = () => {
-      // Trigger a re-render by changing activeTab
-      setActiveTab('profile');
-      setTimeout(() => setActiveTab('users'), 100);
-    };
 
     // Check if current user is admin (allow access for debugging)
     const isAdmin = authState.user?.role === 'admin' || authState.user?.role === 'super_admin';
@@ -660,92 +757,6 @@ export const Settings: React.FC<SettingsProps> = () => {
       );
     }
 
-    const handleBlockUser = async (user: AuthUser) => {
-      if (!blockReason.trim()) return;
-      
-      setIsLoading(true);
-      try {
-        if (authContext.blockUser) {
-          await authContext.blockUser(user.id, blockReason);
-        }
-        setShowBlockModal(false);
-        setBlockReason('');
-        setSelectedUser(null);
-      } catch (error) {
-        console.error('Failed to block user:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const handleUnblockUser = async (user: AuthUser) => {
-      setIsLoading(true);
-      try {
-        if (authContext.unblockUser) {
-          await authContext.unblockUser(user.id);
-        }
-      } catch (error) {
-        console.error('Failed to unblock user:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const handleDeleteUser = async (user: AuthUser) => {
-      if (!confirm(`Are you sure you want to delete ${user.name}? This action cannot be undone.`)) return;
-      
-      setIsLoading(true);
-      try {
-        if (authContext.deleteUser) {
-          await authContext.deleteUser(user.id);
-        }
-      } catch (error) {
-        console.error('Failed to delete user:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    const handleEditUser = (user: AuthUser) => {
-      setSelectedUser(user);
-      setEditUserData({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        department: user.department?.name || ''
-      });
-      setShowEditModal(true);
-    };
-
-    const handleSaveEditUser = async () => {
-      if (!selectedUser) return;
-      
-      setIsLoading(true);
-      try {
-        const selectedDepartment = departments.find(d => d.id === editUserData.department);
-        const updateData = {
-          name: editUserData.name,
-          email: editUserData.email,
-          role: editUserData.role,
-          department: selectedDepartment || null
-        };
-        
-        if (updateUserProfile) {
-          await updateUserProfile(selectedUser.id, updateData as Partial<AuthUser>);
-          setShowEditModal(false);
-          setSelectedUser(null);
-          // Refresh users list
-          refreshUsers();
-        } else {
-          throw new Error('Update function not available. Please ensure you are logged in as an admin.');
-        }
-      } catch (error) {
-        console.error('Failed to update user:', error);
-        alert(`Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     return (
       <div className="space-y-6">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-8">
@@ -825,16 +836,19 @@ export const Settings: React.FC<SettingsProps> = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2">
-                    {/* Edit button for all users */}
-                    <button
-                      onClick={() => handleEditUser(user)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                      disabled={isLoading}
-                      title="Edit user"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
+                    {/* Edit button for all users except current user */}
+                    {user.id !== authState.user?.id && (
+                      <button
+                        onClick={() => handleEditUser(user)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                        disabled={isLoading}
+                        title="Edit user"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    )}
                     
+                    {/* Block/Unblock buttons for non-admin users */}
                     {user.role !== 'super_admin' && user.role !== 'admin' && (
                       <>
                         {user.isBlocked ? (
@@ -859,16 +873,19 @@ export const Settings: React.FC<SettingsProps> = () => {
                             <Shield className="w-4 h-4" />
                           </button>
                         )}
-                        
-                        <button
-                          onClick={() => handleDeleteUser(user)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                          disabled={isLoading}
-                          title="Delete user"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
                       </>
+                    )}
+                    
+                    {/* Delete button for all users except current user */}
+                    {user.id !== authState.user?.id && (
+                      <button
+                        onClick={() => handleDeleteUser(user)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                        disabled={isLoading}
+                        title="Delete user"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1008,7 +1025,7 @@ export const Settings: React.FC<SettingsProps> = () => {
                   >
                     <option value="">Select Department</option>
                     {departments.map(dept => (
-                      <option key={dept.id} value={dept.id}>{dept.name}</option>
+                      <option key={dept.id} value={dept.name}>{dept.name}</option>
                     ))}
                   </select>
                 </div>
