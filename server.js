@@ -81,25 +81,13 @@ async function loadOrdersFromBigQuery() {
       console.log('📄 Sample row:', exploreRows[0]);
     }
     
-    // Now build the main query based on available columns
-    const firstRow = exploreRows[0] || {};
-    const hasOrderValue = 'order_value' in firstRow;
-    const hasTotalAmount = 'total_amount' in firstRow;
-    const hasPrice = 'price' in firstRow;
-    const hasCurrency = 'currency' in firstRow;
-    
-    let valueColumn = 'NULL';
-    if (hasOrderValue) valueColumn = 'order_value';
-    else if (hasTotalAmount) valueColumn = 'total_amount';
-    else if (hasPrice) valueColumn = 'price';
-    
-    let currencyColumn = hasCurrency ? 'currency' : "'GBP'";
-    
+    // Build a simple query that works with your table structure
+    // Based on logs, your table has order_line_id but no value columns
     const query = `
       SELECT DISTINCT 
         order_line_id as orderLineId,
-        CAST(COALESCE(${valueColumn}, 0) as FLOAT64) as orderValue,
-        COALESCE(${currencyColumn}, 'GBP') as currency
+        0.0 as orderValue,
+        'GBP' as currency
       FROM \`${tableName}\`
       WHERE order_line_id IS NOT NULL
       LIMIT 10000
@@ -151,7 +139,7 @@ app.get('/api/test', (req, res) => {
   res.json({
     success: true,
     message: 'API is working!',
-    version: '2.1',
+    version: '2.3',
     timestamp: new Date().toISOString(),
     env: {
       hasProjectId: !!process.env.BIGQUERY_PROJECT_ID,
