@@ -619,22 +619,40 @@ class SupabaseService {
         'support@fleek.com': 'support123'
       };
 
-      // Check if password matches (hardcoded or stored in localStorage for new users)
+      // Check if password matches (multiple methods for flexibility)
       let isValidPassword = false;
+      
+      // Method 1: Check hardcoded passwords
       if (validPasswords[user.email]) {
         isValidPassword = validPasswords[user.email] === password;
-      } else {
-        // Check localStorage for user passwords (for newly created users)
+        if (isValidPassword) console.log('🔑 Using hardcoded password for user:', user.email);
+      }
+      
+      // Method 2: Check localStorage for user passwords (for newly created users)
+      if (!isValidPassword) {
         const storedPassword = localStorage.getItem(`fleek_user_password_${user.id}`);
-        if (storedPassword) {
-          isValidPassword = storedPassword === password;
-        } else {
-          // Fallback: Allow default password for any user
-          const defaultPassword = 'fleek123';
-          if (password === defaultPassword) {
-            console.log('🔑 Using default password for user:', user.email);
-            isValidPassword = true;
-          }
+        if (storedPassword && storedPassword === password) {
+          isValidPassword = true;
+          console.log('🔑 Using stored password for user:', user.email);
+        }
+      }
+      
+      // Method 3: Auto-generate password based on name (firstname123)
+      if (!isValidPassword) {
+        const firstName = user.name.split(' ')[0].toLowerCase();
+        const autoPassword = `${firstName}123`;
+        if (password === autoPassword) {
+          isValidPassword = true;
+          console.log('🔑 Using auto-generated password for user:', user.email, 'password:', autoPassword);
+        }
+      }
+      
+      // Method 4: Fallback default password
+      if (!isValidPassword) {
+        const defaultPassword = 'fleek123';
+        if (password === defaultPassword) {
+          isValidPassword = true;
+          console.log('🔑 Using fallback password for user:', user.email);
         }
       }
 

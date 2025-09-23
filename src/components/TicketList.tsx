@@ -59,6 +59,15 @@ export const TicketList: React.FC<TicketListProps> = ({
   // Handle creating new ticket with cloud storage
   const handleCreateTicket = async (ticketData: any) => {
     try {
+      // Validate current user
+      if (!currentUser) {
+        console.error('❌ No current user found for ticket creation');
+        alert('Please log in to create tickets');
+        return;
+      }
+
+      console.log('🔄 Creating ticket with current user:', currentUser);
+      
       const newTicket: Ticket = {
         id: `TK-2024-${String((tickets?.length || 0) + 1).padStart(3, '0')}`,
         title: ticketData.title,
@@ -68,7 +77,14 @@ export const TicketList: React.FC<TicketListProps> = ({
         severity: 'medium',
         department: ticketData.department || departments[0],
         assignee: ticketData.assignee || null,
-        reporter: currentUser || { 
+        reporter: currentUser ? {
+          id: currentUser.id,
+          name: currentUser.name,
+          email: currentUser.email,
+          role: currentUser.role,
+          department: currentUser.department || departments[0],
+          isBlocked: currentUser.isBlocked || false
+        } : { 
           id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', // Default admin UUID
           name: 'System Administrator', 
           email: 'admin@fleek.com', 
