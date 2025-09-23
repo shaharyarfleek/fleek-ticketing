@@ -61,15 +61,51 @@ async function loadOrdersFromBigQuery() {
   try {
     console.log('📊 Loading orders from BigQuery...');
     
-    const query = `
+    // First, let's get the table schema to understand available columns
+    const tableName = `${bigqueryConfig.projectId}.${process.env.BIGQUERY_DATASET_ID || 'fleek_raw'}.${process.env.BIGQUERY_TABLE_ID || 'order_line_status_details'}`;
+    
+    console.log('🔍 Checking table schema for:', tableName);
+    
+    // Simple query to get first few rows and understand the structure
+    const exploreQuery = `
+      SELECT *
+      FROM \`${tableName}\`
+      WHERE order_line_id IS NOT NULL
+      LIMIT 5
+    `;
+    
+    const [exploreRows] = await bigquery.query({ query: exploreQuery });
+    
+    if (exploreRows.length > 0) {
+      console.log('📋 Available columns:', Object.keys(exploreRows[0]));
+      console.log('📄 Sample row:', exploreRows[0]);
+    }
+    
+    // Now build the main query based on available columns
+    const firstRow = exploreRows[0] || {};
+    const hasOrderValue = 'order_value' in firstRow;
+    const hasTotalAmount = 'total_amount' in firstRow;
+    const hasPrice = 'price' in firstRow;
+    const hasCurrency = 'currency' in firstRow;
+    
+    let valueColumn = 'NULL';
+    if (hasOrderValue) valueColumn = 'order_value';
+    else if (hasTotalAmount) valueColumn = 'total_amount';
+    else if (hasPrice) valueColumn = 'price';
+    
+    let currencyColumn = hasCurrency ? 'currency' : "'GBP'";
+    
+    const query = \`
       SELECT DISTINCT 
         order_line_id as orderLineId,
-        CAST(order_value as FLOAT64) as orderValue,
-        currency
-      FROM \`${bigqueryConfig.projectId}.${process.env.BIGQUERY_DATASET_ID || 'fleek_raw'}.${process.env.BIGQUERY_TABLE_ID || 'order_line_status_details'}\`
+        CAST(COALESCE(\${valueColumn}, 0) as FLOAT64) as orderValue,
+        COALESCE(\${currencyColumn}, 'GBP') as currency
+      FROM \\\`\${tableName}\\\`
       WHERE order_line_id IS NOT NULL
       LIMIT 10000
-    `;
+    \`;
+    
+    console.log('🔧 Generated query:', query);
 
     const [rows] = await bigquery.query({ query });
     
