@@ -606,7 +606,17 @@ class SupabaseService {
         'shaharyar@fleek.com': 'shaharyar123',
         'john@fleek.com': 'john123',
         'jane@fleek.com': 'jane123',
-        'bob@fleek.com': 'bob123'
+        'bob@fleek.com': 'bob123',
+        // Additional users for demo
+        'sarah@fleek.com': 'sarah123',
+        'mike@fleek.com': 'mike123',
+        'lisa@fleek.com': 'lisa123',
+        'alex@fleek.com': 'alex123',
+        'emma@fleek.com': 'emma123',
+        'david@fleek.com': 'david123',
+        // Generic password for any user not explicitly listed
+        'agent@fleek.com': 'agent123',
+        'support@fleek.com': 'support123'
       };
 
       // Check if password matches (hardcoded or stored in localStorage for new users)
@@ -616,7 +626,16 @@ class SupabaseService {
       } else {
         // Check localStorage for user passwords (for newly created users)
         const storedPassword = localStorage.getItem(`fleek_user_password_${user.id}`);
-        isValidPassword = storedPassword === password;
+        if (storedPassword) {
+          isValidPassword = storedPassword === password;
+        } else {
+          // Fallback: Allow default password for any user
+          const defaultPassword = 'fleek123';
+          if (password === defaultPassword) {
+            console.log('🔑 Using default password for user:', user.email);
+            isValidPassword = true;
+          }
+        }
       }
 
       if (!isValidPassword) {
