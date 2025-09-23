@@ -599,6 +599,10 @@ class SupabaseService {
       // Ensure admin user exists before authentication
       await this.ensureAdminUserExists();
       
+      // Debug: List all users and their passwords
+      console.log('🔍 DEBUG: Authentication attempt for:', username);
+      await this.debugUserPasswords();
+      
       // Handle special case for admin login
       let searchQuery = `email.ilike.%${username}%,name.ilike.%${username}%`;
       
@@ -750,6 +754,48 @@ class SupabaseService {
       console.error('Supabase connection test failed:', error);
       return false;
     }
+  }
+
+  // Debug function to list all users and their expected passwords
+  async debugUserPasswords(): Promise<void> {
+    try {
+      const { data: users, error } = await supabase
+        .from(TABLES.USERS)
+        .select('*');
+
+      if (error) throw error;
+
+      console.log('🔍 DEBUG: All users in database:');
+      users?.forEach(user => {
+        const firstName = user.name.split(' ')[0].toLowerCase();
+        console.log(`👤 User: ${user.name} (${user.email})`);
+        console.log(`   Hardcoded password: ${this.getHardcodedPassword(user.email) || 'none'}`);
+        console.log(`   Auto-generated options: ${firstName}123, ${firstName}@123, ${firstName}_123, ${firstName}`);
+        console.log(`   Fallback: fleek123`);
+        console.log('---');
+      });
+    } catch (error) {
+      console.error('Failed to debug user passwords:', error);
+    }
+  }
+
+  private getHardcodedPassword(email: string): string | undefined {
+    const validPasswords: Record<string, string> = {
+      'admin@fleek.com': 'admin123',
+      'shaharyar@fleek.com': 'shaharyar123',
+      'john@fleek.com': 'john123',
+      'jane@fleek.com': 'jane123',
+      'bob@fleek.com': 'bob123',
+      'sarah@fleek.com': 'sarah123',
+      'mike@fleek.com': 'mike123',
+      'lisa@fleek.com': 'lisa123',
+      'alex@fleek.com': 'alex123',
+      'emma@fleek.com': 'emma123',
+      'david@fleek.com': 'david123',
+      'agent@fleek.com': 'agent123',
+      'support@fleek.com': 'support123'
+    };
+    return validPasswords[email];
   }
 }
 
