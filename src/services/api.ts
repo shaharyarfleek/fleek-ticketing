@@ -1,4 +1,5 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fleek-ticketing.onrender.com';
+const DISABLE_BACKEND_API = import.meta.env.VITE_DISABLE_BACKEND_API === 'true';
 
 // Mock orders for fallback when API is not available
 const MOCK_ORDERS: Order[] = [
@@ -39,6 +40,35 @@ export interface ApiResponse<T> {
 }
 
 class ApiService {
+  private getMockSearchResults(searchQuery: string, limit: number) {
+    // Filter mock orders based on search query
+    const filteredOrders = MOCK_ORDERS.filter(order => 
+      order.orderLineId.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, limit);
+    
+    const suggestions = MOCK_ORDERS
+      .map(order => order.orderLineId)
+      .filter(id => id.toLowerCase().includes(searchQuery.toLowerCase()))
+      .slice(0, 5);
+    
+    return {
+      orders: filteredOrders,
+      suggestions,
+      searchStats: {
+        exactMatches: filteredOrders.length,
+        prefixMatches: 0,
+        containsMatches: filteredOrders.length,
+        fuzzyMatches: 0
+      },
+      cacheInfo: {
+        totalOrders: MOCK_ORDERS.length,
+        lastUpdated: new Date().toISOString(),
+        source: 'mock-data',
+        searchTimeMs: 5
+      }
+    };
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     
@@ -92,6 +122,12 @@ class ApiService {
     searchStats?: any;
     cacheInfo?: any;
   }> {
+    // If backend API is disabled, use mock data directly
+    if (DISABLE_BACKEND_API) {
+      console.log('🔄 Backend API disabled, using mock data for search:', searchQuery);
+      return this.getMockSearchResults(searchQuery, limit);
+    }
+
     try {
       console.log(`🚀 Fast cached search for: "${searchQuery}"`);
       
@@ -113,39 +149,21 @@ class ApiService {
     } catch (error) {
       console.error('Error searching cached orders from API:', error);
       console.log('🔄 Falling back to mock data...');
-      
-      // Fallback to mock data when API is not available
-      const filteredOrders = MOCK_ORDERS.filter(order => 
-        order.orderLineId.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, limit);
-      
-      const suggestions = MOCK_ORDERS
-        .map(order => order.orderLineId)
-        .filter(id => id.toLowerCase().includes(searchQuery.toLowerCase()))
-        .slice(0, 5);
-      
-      console.log(`✅ Using mock data: Found ${filteredOrders.length} results`);
-      
-      return {
-        orders: filteredOrders,
-        suggestions,
-        searchStats: {
-          exactMatches: filteredOrders.length,
-          prefixMatches: 0,
-          containsMatches: filteredOrders.length,
-          fuzzyMatches: 0
-        },
-        cacheInfo: {
-          totalOrders: MOCK_ORDERS.length,
-          lastUpdated: new Date().toISOString(),
-          source: 'mock-fallback',
-          searchTimeMs: 5
-        }
-      };
+      return this.getMockSearchResults(searchQuery, limit);
     }
   }
 
   async getOrder(orderLineId: string): Promise<Order> {
+    // If backend API is disabled, use mock data
+    if (DISABLE_BACKEND_API) {
+      const mockOrder = MOCK_ORDERS.find(order => order.orderLineId === orderLineId);
+      if (mockOrder) {
+        return mockOrder;
+      } else {
+        throw new Error('Order not found in mock data');
+      }
+    }
+
     try {
       const response = await this.request<ApiResponse<Order>>(`/api/orders/${orderLineId}`);
       
@@ -156,6 +174,12 @@ class ApiService {
       }
     } catch (error) {
       console.error(`Error fetching order ${orderLineId}:`, error);
+      // Fallback to mock data
+      const mockOrder = MOCK_ORDERS.find(order => order.orderLineId === orderLineId);
+      if (mockOrder) {
+        console.log('📦 Using mock order data for:', orderLineId);
+        return mockOrder;
+      }
       throw error;
     }
   }
