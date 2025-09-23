@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://fleek-ticketing.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || 'https://fleek-ticketing.onrender.com';
 
 export interface Order {
   orderLineId: string;
