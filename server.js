@@ -218,23 +218,31 @@ app.get('/api/search/orders', async (req, res) => {
       loadOrdersFromBigQuery().catch(console.error); // Don't wait, use existing cache
     }
     
-    // Search in cached data
-    const filteredOrders = ordersCache.filter(order => 
-      order.orderLineId && order.orderLineId.toLowerCase().includes(searchQuery)
-    ).slice(0, parseInt(limit));
+    // Search in cached data - handle different data types safely
+    const filteredOrders = ordersCache.filter(order => {
+      if (!order.orderLineId) return false;
+      
+      // Convert to string and handle different data types
+      const orderIdStr = String(order.orderLineId).toLowerCase();
+      return orderIdStr.includes(searchQuery);
+    }).slice(0, parseInt(limit));
     
-    // Generate suggestions
+    // Generate suggestions - handle different data types safely
     const suggestions = [...new Set(
       ordersCache
-        .filter(order => order.orderLineId && order.orderLineId.toLowerCase().includes(searchQuery))
-        .map(order => order.orderLineId)
+        .filter(order => {
+          if (!order.orderLineId) return false;
+          const orderIdStr = String(order.orderLineId).toLowerCase();
+          return orderIdStr.includes(searchQuery);
+        })
+        .map(order => String(order.orderLineId))
         .slice(0, 10)
     )];
     
-    // Calculate search stats
+    // Calculate search stats - handle different data types safely
     const searchStats = {
-      exactMatches: filteredOrders.filter(o => o.orderLineId.toLowerCase() === searchQuery).length,
-      prefixMatches: filteredOrders.filter(o => o.orderLineId.toLowerCase().startsWith(searchQuery)).length,
+      exactMatches: filteredOrders.filter(o => String(o.orderLineId).toLowerCase() === searchQuery).length,
+      prefixMatches: filteredOrders.filter(o => String(o.orderLineId).toLowerCase().startsWith(searchQuery)).length,
       containsMatches: filteredOrders.length,
       fuzzyMatches: 0
     };
@@ -266,7 +274,7 @@ app.get('/api/search/orders', async (req, res) => {
 app.get('/api/orders/:orderLineId', (req, res) => {
   try {
     const { orderLineId } = req.params;
-    const order = ordersCache.find(o => o.orderLineId === orderLineId);
+    const order = ordersCache.find(o => String(o.orderLineId) === orderLineId);
     
     if (order) {
       res.json({
