@@ -23,8 +23,15 @@ console.log('🔧 Environment Variables Debug:', {
   BIGQUERY_TABLE_ID: process.env.BIGQUERY_TABLE_ID,
   GOOGLE_APPLICATION_CREDENTIALS_JSON: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
   BIGQUERY_CREDENTIALS: !!process.env.BIGQUERY_CREDENTIALS,
-  GOOGLE_APPLICATION_CREDENTIALS: !!process.env.GOOGLE_APPLICATION_CREDENTIALS
+  GOOGLE_APPLICATION_CREDENTIALS: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  projectIdFromConfig: bigqueryConfig.projectId
 });
+
+// Force correct project ID for fleek
+if (!process.env.BIGQUERY_PROJECT_ID) {
+  bigqueryConfig.projectId = 'fleekstore-444315';
+  console.log('🔧 Forcing project ID to fleekstore-444315 since env var not set');
+}
 
 // If running on Render with credentials in env variable
 const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.BIGQUERY_CREDENTIALS;
@@ -108,11 +115,15 @@ app.get('/api/test', (req, res) => {
   res.json({
     success: true,
     message: 'API is working!',
+    version: '2.1',
     timestamp: new Date().toISOString(),
     env: {
       hasProjectId: !!process.env.BIGQUERY_PROJECT_ID,
       hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || !!process.env.BIGQUERY_CREDENTIALS || !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      projectId: bigqueryConfig.projectId
+      projectId: bigqueryConfig.projectId,
+      credentialsSource: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ? 'GOOGLE_APPLICATION_CREDENTIALS_JSON' : 
+                         process.env.BIGQUERY_CREDENTIALS ? 'BIGQUERY_CREDENTIALS' : 
+                         process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'GOOGLE_APPLICATION_CREDENTIALS' : 'none'
     }
   });
 });
@@ -217,8 +228,9 @@ app.get('/api/orders/:orderLineId', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 BigQuery API server running on port ${PORT}`);
-  console.log(`📊 Project: ${process.env.BIGQUERY_PROJECT_ID || 'fleekstore-444315'}`);
+  console.log(`🚀 BigQuery API server running on port ${PORT} - v2.1`);
+  console.log(`📊 Project: ${bigqueryConfig.projectId}`);
   console.log(`📊 Dataset: ${process.env.BIGQUERY_DATASET_ID || 'fleek_raw'}`);
   console.log(`📊 Table: ${process.env.BIGQUERY_TABLE_ID || 'order_line_status_details'}`);
+  console.log(`🔑 Credentials available: ${!!credentialsJson}`);
 });
