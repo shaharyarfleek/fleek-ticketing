@@ -128,6 +128,32 @@ app.get('/api/test', (req, res) => {
   });
 });
 
+// Debug endpoint to check environment variables
+app.get('/api/debug', (req, res) => {
+  const envVars = {};
+  
+  // Only show BigQuery related env vars for security
+  Object.keys(process.env).forEach(key => {
+    if (key.includes('BIGQUERY') || key.includes('GOOGLE_APPLICATION')) {
+      envVars[key] = key.includes('CREDENTIALS') ? '***SET***' : process.env[key];
+    }
+  });
+  
+  res.json({
+    success: true,
+    message: 'Debug info',
+    version: '2.2',
+    timestamp: new Date().toISOString(),
+    environmentVariables: envVars,
+    credentialsChecks: {
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+      BIGQUERY_CREDENTIALS: !!process.env.BIGQUERY_CREDENTIALS,
+      GOOGLE_APPLICATION_CREDENTIALS: !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      combinedCheck: !!(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.BIGQUERY_CREDENTIALS)
+    }
+  });
+});
+
 // Search orders endpoint
 app.get('/api/search/orders', async (req, res) => {
   try {
