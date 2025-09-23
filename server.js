@@ -17,6 +17,15 @@ let bigqueryConfig = {
   projectId: process.env.BIGQUERY_PROJECT_ID || 'fleekstore-444315'
 };
 
+console.log('🔧 Environment Variables Debug:', {
+  BIGQUERY_PROJECT_ID: process.env.BIGQUERY_PROJECT_ID,
+  BIGQUERY_DATASET_ID: process.env.BIGQUERY_DATASET_ID,
+  BIGQUERY_TABLE_ID: process.env.BIGQUERY_TABLE_ID,
+  GOOGLE_APPLICATION_CREDENTIALS_JSON: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+  BIGQUERY_CREDENTIALS: !!process.env.BIGQUERY_CREDENTIALS,
+  GOOGLE_APPLICATION_CREDENTIALS: !!process.env.GOOGLE_APPLICATION_CREDENTIALS
+});
+
 // If running on Render with credentials in env variable
 const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.BIGQUERY_CREDENTIALS;
 if (credentialsJson) {
@@ -50,7 +59,7 @@ async function loadOrdersFromBigQuery() {
         order_line_id as orderLineId,
         CAST(order_value as FLOAT64) as orderValue,
         currency
-      FROM \`${process.env.BIGQUERY_PROJECT_ID || 'fleekstore-444315'}.${process.env.BIGQUERY_DATASET_ID || 'fleek_raw'}.${process.env.BIGQUERY_TABLE_ID || 'order_line_status_details'}\`
+      FROM \`${bigqueryConfig.projectId}.${process.env.BIGQUERY_DATASET_ID || 'fleek_raw'}.${process.env.BIGQUERY_TABLE_ID || 'order_line_status_details'}\`
       WHERE order_line_id IS NOT NULL
       LIMIT 10000
     `;
@@ -103,7 +112,7 @@ app.get('/api/test', (req, res) => {
     env: {
       hasProjectId: !!process.env.BIGQUERY_PROJECT_ID,
       hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || !!process.env.BIGQUERY_CREDENTIALS || !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      projectId: process.env.BIGQUERY_PROJECT_ID || 'fleekstore-444315'
+      projectId: bigqueryConfig.projectId
     }
   });
 });
