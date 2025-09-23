@@ -95,15 +95,15 @@ async function loadOrdersFromBigQuery() {
     
     let currencyColumn = hasCurrency ? 'currency' : "'GBP'";
     
-    const query = \`
+    const query = `
       SELECT DISTINCT 
         order_line_id as orderLineId,
-        CAST(COALESCE(\${valueColumn}, 0) as FLOAT64) as orderValue,
-        COALESCE(\${currencyColumn}, 'GBP') as currency
-      FROM \\\`\${tableName}\\\`
+        CAST(COALESCE(${valueColumn}, 0) as FLOAT64) as orderValue,
+        COALESCE(${currencyColumn}, 'GBP') as currency
+      FROM \`${tableName}\`
       WHERE order_line_id IS NOT NULL
       LIMIT 10000
-    \`;
+    `;
     
     console.log('🔧 Generated query:', query);
 
