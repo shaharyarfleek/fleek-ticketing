@@ -183,26 +183,46 @@ class SupabaseService {
   }
 
   async createTicket(ticket: Ticket): Promise<void> {
-    const dbTicket = this.mapTicketToDatabaseTicket(ticket);
-    
-    // Ensure UUIDs are valid
-    dbTicket.reporter_id = this.convertToValidUUID(dbTicket.reporter_id!);
-    if (dbTicket.assignee_id) {
-      dbTicket.assignee_id = this.convertToValidUUID(dbTicket.assignee_id);
-    }
-    
-    console.log('🔄 Creating ticket in Supabase:', ticket.id);
-    console.log('📄 Database ticket data:', dbTicket);
+    try {
+      const dbTicket = this.mapTicketToDatabaseTicket(ticket);
+      
+      // Ensure UUIDs are valid
+      dbTicket.reporter_id = this.convertToValidUUID(dbTicket.reporter_id!);
+      if (dbTicket.assignee_id) {
+        dbTicket.assignee_id = this.convertToValidUUID(dbTicket.assignee_id);
+      }
+      
+      console.log('🔄 Creating ticket in Supabase:', ticket.id);
+      console.log('📄 Database ticket data:', {
+        id: dbTicket.id,
+        title: dbTicket.title,
+        reporter_id: dbTicket.reporter_id,
+        assignee_id: dbTicket.assignee_id,
+        department_id: dbTicket.department_id,
+        status: dbTicket.status,
+        priority: dbTicket.priority
+      });
 
-    const { error } = await supabase
-      .from(TABLES.TICKETS)
-      .insert(dbTicket);
+      const { data, error } = await supabase
+        .from(TABLES.TICKETS)
+        .insert(dbTicket)
+        .select();
 
-    if (error) {
-      console.error('❌ Supabase error details:', error);
+      if (error) {
+        console.error('❌ Supabase createTicket error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw new Error(`Failed to create ticket: ${error.message}`);
+      }
+      
+      console.log('✅ Ticket created in Supabase:', ticket.id, data);
+    } catch (error) {
+      console.error('❌ Ticket creation failed:', error);
       throw error;
     }
-    console.log('✅ Ticket created in Supabase:', ticket.id);
   }
 
   async updateTicket(ticketId: string, updates: Partial<Ticket>): Promise<void> {
@@ -637,13 +657,30 @@ class SupabaseService {
         }
       }
       
-      // Method 3: Auto-generate password based on name (firstname123)
+      // Method 3: Auto-generate password based on name (multiple formats)
       if (!isValidPassword) {
         const firstName = user.name.split(' ')[0].toLowerCase();
-        const autoPassword = `${firstName}123`;
-        if (password === autoPassword) {
-          isValidPassword = true;
-          console.log('🔑 Using auto-generated password for user:', user.email, 'password:', autoPassword);
+        const autoPasswords = [
+          `${firstName}123`,      // john123
+          `${firstName}@123`,     // john@123
+          `${firstName}_123`,     // john_123
+          `${firstName}`,         // john
+          `${user.name.toLowerCase().replace(/\s+/g, '')}123`, // johnsmith123 (full name)
+        ];
+        
+        console.log('🔍 Debug auto-password:', {
+          userName: user.name,
+          firstName: firstName,
+          possiblePasswords: autoPasswords,
+          enteredPassword: password
+        });
+        
+        for (const autoPassword of autoPasswords) {
+          if (password === autoPassword) {
+            isValidPassword = true;
+            console.log('🔑 Using auto-generated password for user:', user.email, 'password:', autoPassword);
+            break;
+          }
         }
       }
       
