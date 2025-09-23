@@ -14,7 +14,7 @@ app.use(express.json());
 
 // Handle BigQuery authentication for Render deployment
 let bigqueryConfig = {
-  projectId: process.env.BIGQUERY_PROJECT_ID || 'fleekstore-444315'
+  projectId: process.env.BIGQUERY_PROJECT_ID || 'dogwood-baton-345622'
 };
 
 console.log('🔧 Environment Variables Debug:', {
@@ -29,8 +29,8 @@ console.log('🔧 Environment Variables Debug:', {
 
 // Force correct project ID for fleek
 if (!process.env.BIGQUERY_PROJECT_ID) {
-  bigqueryConfig.projectId = 'fleekstore-444315';
-  console.log('🔧 Forcing project ID to fleekstore-444315 since env var not set');
+  bigqueryConfig.projectId = 'dogwood-baton-345622';
+  console.log('🔧 Forcing project ID to dogwood-baton-345622 since env var not set');
 }
 
 // If running on Render with credentials in env variable
