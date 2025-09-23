@@ -18,10 +18,11 @@ let bigqueryConfig = {
 };
 
 // If running on Render with credentials in env variable
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.BIGQUERY_CREDENTIALS;
+if (credentialsJson) {
   try {
     const credentialsPath = path.join(__dirname, 'temp-credentials.json');
-    fs.writeFileSync(credentialsPath, process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    fs.writeFileSync(credentialsPath, credentialsJson);
     process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
     console.log('✅ Created temporary credentials file from environment variable');
   } catch (error) {
@@ -101,7 +102,7 @@ app.get('/api/test', (req, res) => {
     timestamp: new Date().toISOString(),
     env: {
       hasProjectId: !!process.env.BIGQUERY_PROJECT_ID,
-      hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
+      hasCredentials: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || !!process.env.BIGQUERY_CREDENTIALS || !!process.env.GOOGLE_APPLICATION_CREDENTIALS,
       projectId: process.env.BIGQUERY_PROJECT_ID || 'fleekstore-444315'
     }
   });
