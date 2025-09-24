@@ -138,7 +138,7 @@ app.get('/api/test', (req, res) => {
   res.json({
     success: true,
     message: 'API is working!',
-    version: '2.4',
+    version: '2.5',
     timestamp: new Date().toISOString(),
     env: {
       hasProjectId: !!process.env.BIGQUERY_PROJECT_ID,
@@ -175,6 +175,63 @@ app.get('/api/debug', (req, res) => {
       combinedCheck: !!(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.BIGQUERY_CREDENTIALS)
     }
   });
+});
+
+// Debug BigQuery table structure
+app.get('/api/debug-bigquery', async (req, res) => {
+  try {
+    const tableName = `${bigqueryConfig.projectId}.${process.env.BIGQUERY_DATASET_ID || 'fleek_raw'}.${process.env.BIGQUERY_TABLE_ID || 'order_line_status_details'}`;
+    
+    // Test 1: Get table schema
+    const schemaQuery = `
+      SELECT column_name, data_type
+      FROM \`${bigqueryConfig.projectId}.fleek_raw.INFORMATION_SCHEMA.COLUMNS\`
+      WHERE table_name = 'order_line_status_details'
+      ORDER BY ordinal_position
+    `;
+    
+    // Test 2: Get a few sample rows to see actual data
+    const sampleQuery = `
+      SELECT *
+      FROM \`${tableName}\`
+      LIMIT 5
+    `;
+    
+    // Test 3: Count total rows
+    const countQuery = `
+      SELECT COUNT(*) as total_rows
+      FROM \`${tableName}\`
+    `;
+    
+    // Test 4: Count rows with order_line_id
+    const countWithOrderIdQuery = `
+      SELECT COUNT(*) as rows_with_order_id
+      FROM \`${tableName}\`
+      WHERE order_line_id IS NOT NULL
+    `;
+    
+    const [schemaResults] = await bigquery.query({ query: schemaQuery });
+    const [sampleResults] = await bigquery.query({ query: sampleQuery });
+    const [countResults] = await bigquery.query({ query: countQuery });
+    const [countWithOrderIdResults] = await bigquery.query({ query: countWithOrderIdQuery });
+    
+    res.json({
+      success: true,
+      tableName,
+      schema: schemaResults,
+      sampleData: sampleResults,
+      totalRows: countResults[0]?.total_rows,
+      rowsWithOrderId: countWithOrderIdResults[0]?.rows_with_order_id,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      message: 'Failed to debug BigQuery table'
+    });
+  }
 });
 
 // Search orders endpoint
