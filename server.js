@@ -81,14 +81,14 @@ async function loadOrdersFromBigQuery() {
       console.log('📄 Sample row:', exploreRows[0]);
     }
     
-    // Build query using the correct column name: orderValue (not order_value)
+    // Use the correct column names from your BigQuery table
     const query = `
-      SELECT DISTINCT 
-        order_line_id as orderLineId,
-        CAST(COALESCE(orderValue, 0) as FLOAT64) as orderValue,
+      SELECT DISTINCT
+        fleek_id as orderLineId,
+        CAST(COALESCE(total_order_line_amount, 0) as FLOAT64) as orderValue,
         COALESCE(currency, 'GBP') as currency
       FROM \`${tableName}\`
-      WHERE order_line_id IS NOT NULL
+      WHERE fleek_id IS NOT NULL
       LIMIT 10000
     `;
     
@@ -138,7 +138,7 @@ app.get('/api/test', (req, res) => {
   res.json({
     success: true,
     message: 'API is working!',
-    version: '2.5',
+    version: '2.6',
     timestamp: new Date().toISOString(),
     env: {
       hasProjectId: !!process.env.BIGQUERY_PROJECT_ID,
