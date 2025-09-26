@@ -59,14 +59,37 @@ export const TicketList: React.FC<TicketListProps> = ({
   // Handle creating new ticket with cloud storage
   const handleCreateTicket = async (ticketData: any) => {
     try {
-      // Validate current user
+      // Enhanced user validation
       if (!currentUser) {
         console.error('❌ No current user found for ticket creation');
+        console.error('❌ AuthState:', authState);
         alert('Please log in to create tickets');
         return;
       }
 
-      console.log('🔄 Creating ticket with current user:', currentUser);
+      // Validate required ticket data
+      if (!ticketData.title || !ticketData.description) {
+        console.error('❌ Missing required ticket data:', {
+          title: !!ticketData.title,
+          description: !!ticketData.description
+        });
+        alert('Please fill in all required fields (Title and Description)');
+        return;
+      }
+
+      console.log('🔄 Creating ticket with current user:', {
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        userRole: currentUser.role
+      });
+      
+      console.log('🔄 Creating ticket with data:', {
+        title: ticketData.title,
+        description: ticketData.description,
+        priority: ticketData.priority,
+        department: ticketData.department?.name
+      });
       
       const newTicket: Ticket = {
         id: `TK-2024-${String((tickets?.length || 0) + 1).padStart(3, '0')}`,
@@ -121,14 +144,34 @@ export const TicketList: React.FC<TicketListProps> = ({
         worklog: [],
       };
 
-      console.log('🎫 Creating ticket with data:', newTicket);
+      console.log('🎫 Creating ticket with complete data:', {
+        id: newTicket.id,
+        title: newTicket.title,
+        description: newTicket.description,
+        reporterId: newTicket.reporter.id,
+        reporterName: newTicket.reporter.name,
+        departmentId: newTicket.department.id,
+        departmentName: newTicket.department.name
+      });
+      
       await addTicket(newTicket);
       setShowNewTicketModal(false);
       console.log('✅ Ticket created successfully:', newTicket.id);
+      
+      // Show success message to user
+      alert(`Ticket created successfully! Ticket ID: ${newTicket.id}`);
     } catch (error) {
       console.error('❌ Failed to create ticket:', error);
-      // Show more detailed error to user
-      alert(`Failed to create ticket: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        currentUser: currentUser,
+        ticketData: ticketData
+      });
+      
+      // Show detailed error to user
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to create ticket: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
     }
   };
 

@@ -638,26 +638,50 @@ class SupabaseService {
         'alex@fleek.com': 'alex123',
         'emma@fleek.com': 'emma123',
         'david@fleek.com': 'david123',
+        'karen@fleek.com': 'karen123',
+        'steve@fleek.com': 'steve123',
+        'rachel@fleek.com': 'rachel123',
+        'chris@fleek.com': 'chris123',
+        'jessica@fleek.com': 'jessica123',
+        'mark@fleek.com': 'mark123',
+        'amanda@fleek.com': 'amanda123',
+        'brian@fleek.com': 'brian123',
+        'nicole@fleek.com': 'nicole123',
         // Generic password for any user not explicitly listed
         'agent@fleek.com': 'agent123',
         'support@fleek.com': 'support123'
       };
 
-      // Check if password matches (multiple methods for flexibility)
+      // Enhanced password validation with comprehensive logging
       let isValidPassword = false;
+      let matchedMethod = 'none';
+      
+      console.log('🔍 Password validation for user:', {
+        email: user.email,
+        name: user.name,
+        enteredPassword: password,
+        hasHardcodedPassword: !!validPasswords[user.email]
+      });
       
       // Method 1: Check hardcoded passwords
       if (validPasswords[user.email]) {
         isValidPassword = validPasswords[user.email] === password;
-        if (isValidPassword) console.log('🔑 Using hardcoded password for user:', user.email);
+        if (isValidPassword) {
+          matchedMethod = 'hardcoded';
+          console.log('✅ MATCH: Hardcoded password for user:', user.email);
+        } else {
+          console.log('❌ NO MATCH: Expected hardcoded password:', validPasswords[user.email], 'but got:', password);
+        }
       }
       
       // Method 2: Check localStorage for user passwords (for newly created users)
       if (!isValidPassword) {
         const storedPassword = localStorage.getItem(`fleek_user_password_${user.id}`);
+        console.log('🔍 Checking localStorage password for user:', user.id, 'stored:', storedPassword);
         if (storedPassword && storedPassword === password) {
           isValidPassword = true;
-          console.log('🔑 Using stored password for user:', user.email);
+          matchedMethod = 'localStorage';
+          console.log('✅ MATCH: localStorage password for user:', user.email);
         }
       }
       
@@ -672,7 +696,7 @@ class SupabaseService {
           `${user.name.toLowerCase().replace(/\s+/g, '')}123`, // johnsmith123 (full name)
         ];
         
-        console.log('🔍 Debug auto-password:', {
+        console.log('🔍 Testing auto-generated passwords:', {
           userName: user.name,
           firstName: firstName,
           possiblePasswords: autoPasswords,
@@ -682,20 +706,37 @@ class SupabaseService {
         for (const autoPassword of autoPasswords) {
           if (password === autoPassword) {
             isValidPassword = true;
-            console.log('🔑 Using auto-generated password for user:', user.email, 'password:', autoPassword);
+            matchedMethod = `auto-generated: ${autoPassword}`;
+            console.log('✅ MATCH: Auto-generated password for user:', user.email, 'matched:', autoPassword);
             break;
           }
+        }
+        
+        if (!isValidPassword) {
+          console.log('❌ NO MATCH: None of the auto-generated passwords matched');
         }
       }
       
       // Method 4: Fallback default password
       if (!isValidPassword) {
         const defaultPassword = 'fleek123';
+        console.log('🔍 Testing fallback password:', defaultPassword, 'vs entered:', password);
         if (password === defaultPassword) {
           isValidPassword = true;
-          console.log('🔑 Using fallback password for user:', user.email);
+          matchedMethod = 'fallback';
+          console.log('✅ MATCH: Fallback password for user:', user.email);
+        } else {
+          console.log('❌ NO MATCH: Fallback password failed');
         }
       }
+      
+      // Final validation result
+      console.log('🎯 Final password validation result:', {
+        user: user.email,
+        isValid: isValidPassword,
+        matchedMethod: matchedMethod,
+        enteredPassword: password
+      });
 
       if (!isValidPassword) {
         throw new Error('Invalid credentials');
